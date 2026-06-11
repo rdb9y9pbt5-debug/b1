@@ -29,6 +29,7 @@ const els = {
   deckStatus: document.querySelector("#deckStatus"),
   modeSelect: document.querySelector("#modeSelect"),
   filterSelect: document.querySelector("#filterSelect"),
+  startSelect: document.querySelector("#startSelect"),
   csvInput: document.querySelector("#csvInput"),
   lockApp: document.querySelector("#lockApp"),
   resetProgress: document.querySelector("#resetProgress"),
@@ -132,6 +133,11 @@ function bindEvents() {
   });
 
   els.filterSelect.addEventListener("change", () => {
+    currentIndex = 0;
+    applyModeAndFilter();
+  });
+
+  els.startSelect.addEventListener("change", () => {
     currentIndex = 0;
     applyModeAndFilter();
   });
@@ -250,8 +256,9 @@ function normalizeCards(rows) {
 function applyModeAndFilter() {
   const mode = els.modeSelect.value;
   const filter = els.filterSelect.value;
+  const startLetter = els.startSelect.value;
 
-  visibleCards = cards.filter((card) => {
+  const filteredCards = cards.filter((card) => {
     const rating = progress[card.id]?.rating;
     const articleRating = articleProgress[card.id]?.rating;
     if (mode === "article-quiz") {
@@ -270,6 +277,7 @@ function applyModeAndFilter() {
     return true;
   });
 
+  visibleCards = applyStartLetter(filteredCards, startLetter);
   currentIndex = clamp(currentIndex, 0, Math.max(visibleCards.length - 1, 0));
   answerShown = false;
   selectedArticle = "";
@@ -467,6 +475,29 @@ function getModeText(mode) {
   if (mode === "article") return "Article Practice";
   if (mode === "en-de") return "English -> German";
   return "German -> English";
+}
+
+function applyStartLetter(cardList, startLetter) {
+  if (startLetter === "all") return cardList;
+  const sortedCards = [...cardList].sort((first, second) => getSortKey(first.word).localeCompare(getSortKey(second.word), "de"));
+  const startIndex = sortedCards.findIndex((card) => getSortLetter(card.word) >= startLetter);
+  return startIndex === -1 ? [] : sortedCards.slice(startIndex);
+}
+
+function getSortLetter(word) {
+  return getSortKey(word)
+    .charAt(0)
+    .toUpperCase();
+}
+
+function getSortKey(word) {
+  return word
+    .trim()
+    .replace(/^sich(?:\s+etwas)?\s+/i, "")
+    .normalize("NFKD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .replace(/^[^a-zA-Z]+/, "")
+    .toLowerCase();
 }
 
 function updateFilterOptions() {
