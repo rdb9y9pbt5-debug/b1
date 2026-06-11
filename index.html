@@ -8,7 +8,7 @@
     <meta name="apple-mobile-web-app-title" content="B1 Karten">
     <meta name="apple-mobile-web-app-status-bar-style" content="default">
     <title>Goethe B1 Flashcards</title>
-    <link rel="stylesheet" href="style.css?v=4">
+    <link rel="stylesheet" href="style.css?v=7">
   </head>
   <body>
     <section class="lock-screen" id="lockScreen" aria-label="Password required">
@@ -24,16 +24,30 @@
       </form>
     </section>
 
+    <section class="profile-screen hidden" id="profileScreen" aria-label="Choose profile">
+      <div class="profile-panel">
+        <div class="profile-heading">
+          <span class="brand-mark" aria-hidden="true">B1</span>
+          <div>
+            <h1>Choose Profile</h1>
+            <p>Each profile keeps its own vocabulary progress.</p>
+          </div>
+        </div>
+        <div class="profile-grid" id="profileGrid"></div>
+      </div>
+    </section>
+
     <main class="app-shell locked" id="appShell">
       <header class="topbar" aria-label="Study controls">
         <div class="brand">
           <span class="brand-mark" aria-hidden="true">B1</span>
           <div>
             <h1>Goethe B1 Flashcards</h1>
-            <p id="deckStatus">Loading vocabulary...</p>
+            <p><span id="currentProfileLabel">No profile</span> · <span id="deckStatus">Loading vocabulary...</span></p>
           </div>
         </div>
         <div class="top-actions">
+          <button class="ghost-button" id="switchProfile" type="button">Switch Profile</button>
           <button class="ghost-button" id="lockApp" type="button">Lock</button>
           <button class="ghost-button" id="resetProgress" type="button">Reset</button>
         </div>
@@ -187,6 +201,6 @@
       </footer>
     </main>
 
-    <script src="script.js?v=6"></script>
+    <script src="script.js?v=7"></script>
   </body>
 </html>
