@@ -3,6 +3,15 @@ const APP_PASSWORD = "b1";
 const UNLOCK_STORAGE_KEY = "goethe-b1-flashcards-unlocked-v1";
 const STORAGE_KEY = "goethe-b1-flashcards-progress-v1";
 const ARTICLE_STORAGE_KEY = "goethe-b1-article-quiz-progress-v1";
+const PROFILE_STORAGE_KEY = "goethe-b1-profile-store-v1";
+const PROFILE_STORE_VERSION = 1;
+
+const DEFAULT_PROFILES = [
+  { id: "mineko", name: "Mineko", emoji: "⭐" },
+  { id: "sami", name: "Sami", emoji: "🎹" },
+  { id: "mai", name: "Mai", emoji: "🌸" },
+  { id: "ziad", name: "Ziad", emoji: "☕" }
+];
 
 const STANDARD_FILTERS = [
   ["all", "All words"],
@@ -25,12 +34,16 @@ const els = {
   lockForm: document.querySelector("#lockForm"),
   passwordInput: document.querySelector("#passwordInput"),
   lockError: document.querySelector("#lockError"),
+  profileScreen: document.querySelector("#profileScreen"),
+  profileGrid: document.querySelector("#profileGrid"),
   appShell: document.querySelector("#appShell"),
   deckStatus: document.querySelector("#deckStatus"),
+  currentProfileLabel: document.querySelector("#currentProfileLabel"),
   modeSelect: document.querySelector("#modeSelect"),
   filterSelect: document.querySelector("#filterSelect"),
   startSelect: document.querySelector("#startSelect"),
   csvInput: document.querySelector("#csvInput"),
+  switchProfile: document.querySelector("#switchProfile"),
   lockApp: document.querySelector("#lockApp"),
   resetProgress: document.querySelector("#resetProgress"),
   statTotalLabel: document.querySelector("#statTotalLabel"),
@@ -73,6 +86,8 @@ let articleQuizAnswered = false;
 let selectedQuizArticle = "";
 let progress = {};
 let articleProgress = {};
+let profileStore = null;
+let currentProfileId = "";
 
 document.addEventListener("DOMContentLoaded", init);
 
@@ -87,9 +102,7 @@ async function init() {
 
 async function unlockApp() {
   els.lockScreen.classList.add("hidden");
-  els.appShell.classList.remove("locked");
-  progress = loadProgress();
-  articleProgress = loadArticleProgress();
+  profileStore = loadProfileStore();
   bindEvents();
   try {
     const response = await fetch(CSV_URL, { cache: "no-store" });
@@ -101,8 +114,11 @@ async function unlockApp() {
     els.deckStatus.textContent = "Could not load vocabulary.csv. Use a local web server or upload a CSV.";
     cards = [];
   }
-  updateFilterOptions();
-  applyModeAndFilter();
+  if (profileStore.currentProfile) {
+    selectProfile(profileStore.currentProfile);
+  } else {
+    showProfileScreen();
+  }
 }
 
 function bindLockEvents() {
@@ -123,22 +139,212 @@ function isUnlocked() {
   return localStorage.getItem(UNLOCK_STORAGE_KEY) === "true";
 }
 
+function loadProfileStore() {
+  const emptyStore = createProfileStore();
+  let stored = null;
+  try {
+    stored = JSON.parse(localStorage.getItem(PROFILE_STORAGE_KEY));
+  } catch {
+    stored = null;
+  }
+
+  const store = {
+    ...emptyStore,
+    ...(stored || {}),
+    profiles: {
+      ...emptyStore.profiles,
+      ...(stored?.profiles || {})
+    }
+  };
+
+  DEFAULT_PROFILES.forEach((profile) => {
+    store.profiles[profile.id] = normalizeProfileData(store.profiles[profile.id], profile);
+  });
+
+  if (!store.migratedLegacyProgress) {
+    const legacyProgress = readStorageObject(STORAGE_KEY);
+    const legacyArticleProgress = readStorageObject(ARTICLE_STORAGE_KEY);
+    const hasLegacyData = Object.keys(legacyProgress).length > 0 || Object.keys(legacyArticleProgress).length > 0;
+    store.profiles.mineko.progress = {
+      ...legacyProgress,
+      ...store.profiles.mineko.progress
+    };
+    store.profiles.mineko.articleProgress = {
+      ...legacyArticleProgress,
+      ...store.profiles.mineko.articleProgress
+    };
+    if (hasLegacyData) store.currentProfile = store.currentProfile || "mineko";
+    store.migratedLegacyProgress = true;
+  }
+
+  localStorage.setItem(PROFILE_STORAGE_KEY, JSON.stringify(store));
+  return store;
+}
+
+function createProfileStore() {
+  return {
+    version: PROFILE_STORE_VERSION,
+    currentProfile: "",
+    migratedLegacyProgress: false,
+    profiles: DEFAULT_PROFILES.reduce((profiles, profile) => {
+      profiles[profile.id] = normalizeProfileData(null, profile);
+      return profiles;
+    }, {})
+  };
+}
+
+function normalizeProfileData(data, profile) {
+  return {
+    id: profile.id,
+    name: data?.name || profile.name,
+    emoji: data?.emoji || profile.emoji,
+    decks: data?.decks || {},
+    progress: data?.progress || {},
+    articleProgress: data?.articleProgress || {},
+    settings: {
+      mode: data?.settings?.mode || "de-en",
+      filter: data?.settings?.filter || "all",
+      start: data?.settings?.start || "all"
+    },
+    history: Array.isArray(data?.history) ? data.history : [],
+    lastStudyDate: data?.lastStudyDate || ""
+  };
+}
+
+function readStorageObject(key) {
+  try {
+    return JSON.parse(localStorage.getItem(key)) || {};
+  } catch {
+    return {};
+  }
+}
+
+function saveProfileStore() {
+  localStorage.setItem(PROFILE_STORAGE_KEY, JSON.stringify(profileStore));
+}
+
+function showProfileScreen() {
+  currentProfileId = "";
+  progress = {};
+  articleProgress = {};
+  els.appShell.classList.add("locked");
+  els.profileScreen.classList.remove("hidden");
+  renderProfileCards();
+}
+
+function selectProfile(profileId) {
+  const profile = profileStore.profiles[profileId];
+  if (!profile) return;
+  currentProfileId = profileId;
+  profileStore.currentProfile = profileId;
+  progress = profile.progress;
+  articleProgress = profile.articleProgress;
+  applyProfileSettings(profile.settings);
+  saveProfileStore();
+  els.currentProfileLabel.textContent = `${profile.emoji} ${profile.name}`;
+  els.profileScreen.classList.add("hidden");
+  els.appShell.classList.remove("locked");
+  updateFilterOptions();
+  currentIndex = 0;
+  applyModeAndFilter();
+}
+
+function getCurrentProfile() {
+  return profileStore.profiles[currentProfileId || profileStore.currentProfile || "mineko"];
+}
+
+function applyProfileSettings(settings) {
+  els.modeSelect.value = settings.mode || "de-en";
+  updateFilterOptions();
+  els.filterSelect.value = getValidFilterValue(settings.filter || "all");
+  els.startSelect.value = settings.start || "all";
+}
+
+function saveSettings() {
+  if (!currentProfileId) return;
+  const profile = getCurrentProfile();
+  profile.settings = {
+    mode: els.modeSelect.value,
+    filter: els.filterSelect.value,
+    start: els.startSelect.value
+  };
+  saveProfileStore();
+}
+
+function renderProfileCards() {
+  els.profileGrid.replaceChildren(
+    ...DEFAULT_PROFILES.map((profileInfo) => {
+      const profile = profileStore.profiles[profileInfo.id];
+      const stats = getProfileDashboardStats(profile);
+      const button = document.createElement("button");
+      button.className = "profile-card";
+      button.type = "button";
+      button.dataset.profileId = profile.id;
+      button.innerHTML = `
+        <span class="profile-emoji" aria-hidden="true">${profile.emoji}</span>
+        <span class="profile-name">${profile.name}</span>
+        <span class="profile-last">${stats.lastStudyDate}</span>
+        <span class="profile-stat"><strong>${stats.total}</strong> words</span>
+        <span class="profile-stat"><strong>${stats.known}</strong> known</span>
+        <span class="profile-stat"><strong>${stats.unsure}</strong> unsure</span>
+        <span class="profile-stat"><strong>${stats.unknown}</strong> unknown</span>
+        <span class="profile-stat"><strong>${stats.mastered}</strong> mastered</span>
+      `;
+      return button;
+    })
+  );
+}
+
+function getProfileDashboardStats(profile) {
+  const counts = Object.values(profile.progress || {}).reduce(
+    (total, entry) => {
+      if (entry.rating === "know") total.known += 1;
+      if (entry.rating === "unsure") total.unsure += 1;
+      if (entry.rating === "dontKnow") total.unknown += 1;
+      return total;
+    },
+    { known: 0, unsure: 0, unknown: 0 }
+  );
+  const mastered = cards.length ? `${Math.round((counts.known / cards.length) * 100)}%` : "0%";
+  return {
+    total: cards.length,
+    known: counts.known,
+    unsure: counts.unsure,
+    unknown: counts.unknown,
+    mastered,
+    lastStudyDate: profile.lastStudyDate ? `Last: ${formatDate(profile.lastStudyDate)}` : "Not studied yet"
+  };
+}
+
+function formatDate(value) {
+  return new Date(value).toLocaleDateString([], { month: "short", day: "numeric", year: "numeric" });
+}
+
 function bindEvents() {
   if (els.appShell.dataset.bound === "true") return;
   els.appShell.dataset.bound = "true";
+  els.profileGrid.addEventListener("click", (event) => {
+    const button = event.target.closest("button[data-profile-id]");
+    if (!button) return;
+    selectProfile(button.dataset.profileId);
+  });
+
   els.modeSelect.addEventListener("change", () => {
     currentIndex = 0;
     updateFilterOptions();
+    saveSettings();
     applyModeAndFilter();
   });
 
   els.filterSelect.addEventListener("change", () => {
     currentIndex = 0;
+    saveSettings();
     applyModeAndFilter();
   });
 
   els.startSelect.addEventListener("change", () => {
     currentIndex = 0;
+    saveSettings();
     applyModeAndFilter();
   });
 
@@ -171,17 +377,23 @@ function bindEvents() {
     rateArticleCard(button.dataset.articleRating);
   });
 
+  els.switchProfile.addEventListener("click", showProfileScreen);
+
   els.lockApp.addEventListener("click", () => {
     localStorage.removeItem(UNLOCK_STORAGE_KEY);
     window.location.reload();
   });
 
   els.resetProgress.addEventListener("click", () => {
-    if (!window.confirm("Reset all saved progress for this deck?")) return;
+    const profile = getCurrentProfile();
+    if (!window.confirm(`Reset saved progress for ${profile.name}?`)) return;
     progress = {};
     articleProgress = {};
+    profile.history = [];
+    profile.lastStudyDate = "";
     saveProgress();
     saveArticleProgress();
+    saveProfileStore();
     currentIndex = 0;
     applyModeAndFilter();
   });
@@ -345,6 +557,7 @@ function rateCard(rating) {
     rating,
     updatedAt: new Date().toISOString()
   };
+  recordStudyHistory("flashcard", card, rating);
   saveProgress();
 
   if (visibleCards.length > 1) {
@@ -422,6 +635,7 @@ function rateArticleCard(rating) {
     rating,
     updatedAt: new Date().toISOString()
   };
+  recordStudyHistory("article-quiz", card, rating);
   saveArticleProgress();
 
   if (visibleCards.length > 1) {
@@ -520,28 +734,48 @@ function updateFilterOptions() {
   els.filterSelect.value = allowedValues.includes(currentValue) ? currentValue : options[0][0];
 }
 
+function getValidFilterValue(value) {
+  const options = els.modeSelect.value === "article-quiz" ? ARTICLE_FILTERS : STANDARD_FILTERS;
+  const allowedValues = options.map(([optionValue]) => optionValue);
+  return allowedValues.includes(value) ? value : options[0][0];
+}
+
+function recordStudyHistory(type, card, rating) {
+  if (!currentProfileId) return;
+  const profile = getCurrentProfile();
+  const now = new Date().toISOString();
+  profile.lastStudyDate = now;
+  profile.history = [
+    {
+      type,
+      cardId: card.id,
+      word: card.word,
+      rating,
+      studiedAt: now,
+      mode: els.modeSelect.value
+    },
+    ...(profile.history || [])
+  ].slice(0, 200);
+}
+
 function loadProgress() {
-  try {
-    return JSON.parse(localStorage.getItem(STORAGE_KEY)) || {};
-  } catch {
-    return {};
-  }
+  return getCurrentProfile()?.progress || {};
 }
 
 function saveProgress() {
-  localStorage.setItem(STORAGE_KEY, JSON.stringify(progress));
+  if (!currentProfileId) return;
+  getCurrentProfile().progress = progress;
+  saveProfileStore();
 }
 
 function loadArticleProgress() {
-  try {
-    return JSON.parse(localStorage.getItem(ARTICLE_STORAGE_KEY)) || {};
-  } catch {
-    return {};
-  }
+  return getCurrentProfile()?.articleProgress || {};
 }
 
 function saveArticleProgress() {
-  localStorage.setItem(ARTICLE_STORAGE_KEY, JSON.stringify(articleProgress));
+  if (!currentProfileId) return;
+  getCurrentProfile().articleProgress = articleProgress;
+  saveProfileStore();
 }
 
 function slugify(value) {
