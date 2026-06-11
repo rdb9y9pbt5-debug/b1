@@ -1,0 +1,164 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+    <meta name="theme-color" content="#f7f4ec">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-title" content="B1 Karten">
+    <meta name="apple-mobile-web-app-status-bar-style" content="default">
+    <title>Goethe B1 Flashcards</title>
+    <link rel="stylesheet" href="style.css">
+  </head>
+  <body>
+    <section class="lock-screen" id="lockScreen" aria-label="Password required">
+      <form class="lock-card" id="lockForm">
+        <span class="brand-mark" aria-hidden="true">B1</span>
+        <h1>Goethe B1 Flashcards</h1>
+        <label>
+          <span>Password</span>
+          <input id="passwordInput" type="password" autocomplete="current-password" required>
+        </label>
+        <button class="primary-button" type="submit">Unlock</button>
+        <p class="lock-error hidden" id="lockError">Incorrect password.</p>
+      </form>
+    </section>
+
+    <main class="app-shell locked" id="appShell">
+      <header class="topbar" aria-label="Study controls">
+        <div class="brand">
+          <span class="brand-mark" aria-hidden="true">B1</span>
+          <div>
+            <h1>Goethe B1 Flashcards</h1>
+            <p id="deckStatus">Loading vocabulary...</p>
+          </div>
+        </div>
+        <div class="top-actions">
+          <button class="ghost-button" id="lockApp" type="button">Lock</button>
+          <button class="ghost-button" id="resetProgress" type="button">Reset</button>
+        </div>
+      </header>
+
+      <section class="control-panel" aria-label="Study settings">
+        <label>
+          <span>Mode</span>
+          <select id="modeSelect">
+            <option value="de-en">German -> English</option>
+            <option value="article">Article Practice</option>
+            <option value="en-de">English -> German</option>
+            <option value="article-quiz">Article Quiz</option>
+          </select>
+        </label>
+        <label>
+          <span>Filter</span>
+          <select id="filterSelect">
+            <option value="all">All words</option>
+            <option value="nouns">Nouns only</option>
+            <option value="meaningOnly">Meaning known, article unknown</option>
+            <option value="unsure">Unsure words only</option>
+            <option value="dontKnow">Don't Know words only</option>
+          </select>
+        </label>
+        <label class="file-control">
+          <span>CSV</span>
+          <input id="csvInput" type="file" accept=".csv,text/csv">
+        </label>
+      </section>
+
+      <section class="stats-grid" aria-label="Progress statistics">
+        <article>
+          <span id="statTotalLabel">Total</span>
+          <strong id="statTotal">0</strong>
+        </article>
+        <article>
+          <span id="statKnowLabel">Know</span>
+          <strong id="statKnow">0</strong>
+        </article>
+        <article>
+          <span id="statUnsureLabel">Unsure</span>
+          <strong id="statUnsure">0</strong>
+        </article>
+        <article>
+          <span id="statMeaningOnlyLabel">Article Gap</span>
+          <strong id="statMeaningOnly">0</strong>
+        </article>
+        <article>
+          <span id="statDontKnowLabel">Don't Know</span>
+          <strong id="statDontKnow">0</strong>
+        </article>
+        <article>
+          <span id="statCompletedLabel">Done</span>
+          <strong id="statCompleted">0%</strong>
+        </article>
+      </section>
+
+      <section class="study-stage" aria-live="polite">
+        <article class="flashcard" id="flashcard">
+          <div class="card-meta">
+            <span id="cardCounter">0 / 0</span>
+            <span id="cardMode">German -> English</span>
+          </div>
+
+          <div class="question-area">
+            <p class="eyebrow" id="promptLabel">German</p>
+            <h2 id="questionText">Vocabulary loading</h2>
+          </div>
+
+          <div class="article-guess hidden" id="articleGuess" aria-label="Article guess">
+            <button type="button" data-article="der">der</button>
+            <button type="button" data-article="die">die</button>
+            <button type="button" data-article="das">das</button>
+          </div>
+
+          <div class="article-quiz hidden" id="articleQuiz" aria-label="Article quiz">
+            <div class="article-quiz-options" id="articleQuizOptions">
+              <button type="button" data-quiz-article="der">der</button>
+              <button type="button" data-quiz-article="die">die</button>
+              <button type="button" data-quiz-article="das">das</button>
+            </div>
+            <p class="article-quiz-result hidden" id="articleQuizResult"></p>
+            <div class="article-rating-buttons hidden" id="articleRatingButtons">
+              <button class="know" type="button" data-article-rating="known">I know this</button>
+              <button class="kind-of" type="button" data-article-rating="kindOf">I kind of know this</button>
+              <button class="dont-know" type="button" data-article-rating="unknown">I don’t know this</button>
+            </div>
+          </div>
+
+          <div class="answer hidden" id="answerPanel">
+            <dl>
+              <div>
+                <dt>Article</dt>
+                <dd id="answerArticle">-</dd>
+              </div>
+              <div>
+                <dt>Meaning</dt>
+                <dd id="answerMeaning">-</dd>
+              </div>
+              <div>
+                <dt>Example</dt>
+                <dd id="answerExample">-</dd>
+              </div>
+            </dl>
+          </div>
+
+          <div class="empty-state hidden" id="emptyState">
+            <h2>No cards match this view</h2>
+            <p>Change the mode or filter, or study a few cards first.</p>
+          </div>
+        </article>
+      </section>
+
+      <footer class="action-bar">
+        <button class="primary-button" id="showAnswer" type="button">Show Answer</button>
+        <div class="rating-buttons hidden" id="ratingButtons">
+          <button class="know" type="button" data-rating="know">Know</button>
+          <button class="meaning-only" id="meaningOnlyButton" type="button" data-rating="meaningOnly">Meaning Only</button>
+          <button class="unsure" type="button" data-rating="unsure">Unsure</button>
+          <button class="dont-know" type="button" data-rating="dontKnow">Don't Know</button>
+        </div>
+      </footer>
+    </main>
+
+    <script src="script.js"></script>
+  </body>
+</html>
