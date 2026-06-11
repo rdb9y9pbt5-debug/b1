@@ -478,8 +478,8 @@ function getModeText(mode) {
 }
 
 function applyStartLetter(cardList, startLetter) {
-  if (startLetter === "all") return cardList;
   const sortedCards = [...cardList].sort((first, second) => getSortKey(first.word).localeCompare(getSortKey(second.word), "de"));
+  if (startLetter === "all") return sortedCards;
   const startIndex = sortedCards.findIndex((card) => getSortLetter(card.word) >= startLetter);
   return startIndex === -1 ? [] : sortedCards.slice(startIndex);
 }
