@@ -186,16 +186,18 @@ function bindEvents() {
     applyModeAndFilter();
   });
 
-  els.csvInput.addEventListener("change", async (event) => {
-    const [file] = event.target.files;
-    if (!file) return;
-    const csv = await file.text();
-    cards = normalizeCards(parseCsv(csv));
-    els.deckStatus.textContent = `${cards.length} cards loaded from ${file.name}`;
-    currentIndex = 0;
-    updateFilterOptions();
-    applyModeAndFilter();
-  });
+  if (els.csvInput) {
+    els.csvInput.addEventListener("change", async (event) => {
+      const [file] = event.target.files;
+      if (!file) return;
+      const csv = await file.text();
+      cards = normalizeCards(parseCsv(csv));
+      els.deckStatus.textContent = `${cards.length} cards loaded from ${file.name}`;
+      currentIndex = 0;
+      updateFilterOptions();
+      applyModeAndFilter();
+    });
+  }
 }
 
 function parseCsv(text) {
