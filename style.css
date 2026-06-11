@@ -186,8 +186,12 @@ h1 {
 
 .control-panel {
   display: grid;
-  grid-template-columns: 1fr 1fr minmax(92px, 0.45fr) minmax(190px, 0.8fr);
+  grid-template-columns: 1fr 1fr minmax(92px, 0.45fr);
   gap: 10px;
+}
+
+.file-control {
+  display: none;
 }
 
 label {
@@ -504,10 +508,6 @@ select,
 
   .control-panel {
     grid-template-columns: 1fr 1fr minmax(76px, 0.65fr);
-  }
-
-  .file-control {
-    display: none;
   }
 
   .stats-grid {
