@@ -480,14 +480,14 @@ function renderDashboard() {
   els.levelProgressText.textContent = level.next
     ? `${normalizeCoinCount(profile.coins)} / ${level.next} coins to next level`
     : "Max level reached";
-  els.challengeTitle.textContent = challenge.completed ? "✅ Challenge Complete" : "Today's Challenge";
+  els.challengeTitle.textContent = challenge.completed ? "✅ Complete" : "🎯 Today's Challenge";
   els.challengeReward.textContent = challenge.completed ? "+10 Coins Earned" : `Reward: +${DAILY_CHALLENGE_REWARD} coins`;
   els.challengeStatus.textContent = challenge.completed
-    ? `${DAILY_CHALLENGE_GOAL} / ${DAILY_CHALLENGE_GOAL} article questions`
-    : `${Math.min(challenge.articleQuestions, DAILY_CHALLENGE_GOAL)} / ${DAILY_CHALLENGE_GOAL} article questions`;
+    ? `${DAILY_CHALLENGE_GOAL} / ${DAILY_CHALLENGE_GOAL}`
+    : `${Math.min(challenge.articleQuestions, DAILY_CHALLENGE_GOAL)} / ${DAILY_CHALLENGE_GOAL}`;
   els.challengeProgressFill.style.width = `${Math.min((challenge.articleQuestions / DAILY_CHALLENGE_GOAL) * 100, 100)}%`;
-  els.streakCurrent.textContent = `🔥 ${streak.current} Day Streak`;
-  els.streakBest.textContent = `Best Streak: ${streak.best} days`;
+  els.streakCurrent.textContent = `${streak.current} ${streak.current === 1 ? "Day" : "Days"}`;
+  els.streakBest.textContent = `Best: ${streak.best} days`;
   renderAvatar(els.dashboardAvatar, profile);
   renderCoinLeaderboard();
   saveProfileStore();

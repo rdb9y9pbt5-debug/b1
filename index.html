@@ -8,7 +8,7 @@
     <meta name="apple-mobile-web-app-title" content="B1 Karten">
     <meta name="apple-mobile-web-app-status-bar-style" content="default">
     <title>Goethe B1 Flashcards</title>
-    <link rel="stylesheet" href="style.css?v=30">
+    <link rel="stylesheet" href="style.css?v=31">
   </head>
   <body>
     <section class="lock-screen" id="lockScreen" aria-label="Password required">
@@ -91,22 +91,23 @@
           <button class="start-earning-button" type="button" data-dashboard-action="earn-coins">Start Earning</button>
         </article>
 
-        <article class="challenge-card" aria-label="Daily challenge">
-          <div class="challenge-heading">
-            <h3 id="challengeTitle">Today's Challenge</h3>
-            <strong id="challengeReward">+10 coins</strong>
-          </div>
-          <p id="challengeStatus">0 / 20 article questions</p>
-          <div class="progress-track" aria-hidden="true">
-            <span id="challengeProgressFill"></span>
-          </div>
-        </article>
-
-        <article class="streak-card" aria-label="Study streak">
-          <h3>🔥 Current Streak</h3>
-          <strong id="streakCurrent">0 Day Streak</strong>
-          <p id="streakBest">Best Streak: 0 days</p>
-        </article>
+        <div class="dashboard-motivation" aria-label="Daily motivation">
+          <article class="streak-card" aria-label="Study streak">
+            <h3>🔥 Streak</h3>
+            <strong id="streakCurrent">0 Days</strong>
+            <p id="streakBest">Best: 0 days</p>
+          </article>
+          <article class="challenge-card" aria-label="Daily challenge">
+            <div class="challenge-heading">
+              <h3 id="challengeTitle">🎯 Today's Challenge</h3>
+              <strong id="challengeReward">+10 coins</strong>
+            </div>
+            <p id="challengeStatus">0 / 20</p>
+            <div class="progress-track" aria-hidden="true">
+              <span id="challengeProgressFill"></span>
+            </div>
+          </article>
+        </div>
 
         <section class="leaderboard-card" aria-label="Family coin leaderboard">
           <h3>🏆 Family Coin Leaderboard</h3>
@@ -325,6 +326,6 @@
       </footer>
     </main>
 
-    <script src="script.js?v=30"></script>
+    <script src="script.js?v=31"></script>
   </body>
 </html>

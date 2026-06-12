@@ -340,7 +340,7 @@ h1 {
   overflow: auto;
   display: grid;
   align-content: start;
-  gap: 14px;
+  gap: 12px;
   padding: clamp(6px, 1.4vw, 12px) 0;
 }
 
@@ -361,13 +361,13 @@ h1 {
 .earn-coins-card,
 .challenge-card,
 .streak-card {
-  min-height: 120px;
+  min-height: 108px;
   border: 1px solid rgba(222, 216, 203, 0.92);
   border-radius: 8px;
   box-shadow: var(--shadow);
-  padding: clamp(16px, 2.6vw, 24px);
+  padding: clamp(12px, 2vw, 18px);
   display: grid;
-  gap: 12px;
+  gap: 9px;
 }
 
 .level-card {
@@ -434,12 +434,23 @@ h1 {
   background: linear-gradient(135deg, var(--red-soft), rgba(255, 253, 248, 0.94));
 }
 
+.dashboard-motivation {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 10px;
+}
+
+.dashboard-motivation .challenge-card,
+.dashboard-motivation .streak-card {
+  min-height: 96px;
+}
+
 .level-card h3,
 .earn-coins-card h3,
 .challenge-card h3,
 .streak-card h3 {
-  margin: 0 0 8px;
-  font-size: clamp(1.25rem, 3vw, 1.8rem);
+  margin: 0 0 4px;
+  font-size: clamp(1rem, 2.2vw, 1.35rem);
   line-height: 1.05;
 }
 
@@ -448,7 +459,7 @@ h1 {
 .challenge-card p,
 .streak-card p {
   color: var(--muted);
-  font-size: clamp(0.92rem, 1.8vw, 1.05rem);
+  font-size: clamp(0.8rem, 1.5vw, 0.95rem);
   font-weight: 750;
   line-height: 1.25;
 }
@@ -456,7 +467,14 @@ h1 {
 .level-card strong,
 .streak-card strong {
   color: var(--violet);
-  font-size: clamp(1.55rem, 4vw, 2.45rem);
+  font-size: clamp(1.55rem, 4vw, 2.25rem);
+  line-height: 1;
+}
+
+.challenge-card > p {
+  color: var(--ink);
+  font-size: clamp(1.55rem, 4vw, 2.25rem);
+  font-weight: 900;
   line-height: 1;
 }
 
@@ -469,6 +487,7 @@ h1 {
 
 .challenge-heading strong {
   color: var(--green);
+  font-size: 0.78rem;
   white-space: nowrap;
 }
 
@@ -1110,6 +1129,11 @@ select,
     grid-template-columns: 1fr;
   }
 
+  .dashboard-motivation {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 8px;
+  }
+
   .dashboard-progress {
     grid-template-columns: repeat(2, minmax(0, 1fr));
     gap: 8px;
@@ -1239,7 +1263,7 @@ select,
   .earn-coins-card h3,
   .challenge-card h3,
   .streak-card h3 {
-    font-size: 1.18rem;
+    font-size: 1rem;
   }
 
   .level-card p,
@@ -1260,6 +1284,14 @@ select,
 
   .dashboard-card {
     padding: 10px;
+  }
+
+  .challenge-heading {
+    gap: 6px;
+  }
+
+  .challenge-heading strong {
+    font-size: 0.7rem;
   }
 
   .search-result {
@@ -1379,6 +1411,7 @@ select,
 }
 
 @media (max-width: 340px) {
+  .dashboard-motivation,
   .dashboard-progress {
     grid-template-columns: 1fr;
   }
