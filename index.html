@@ -8,7 +8,7 @@
     <meta name="apple-mobile-web-app-title" content="B1 Karten">
     <meta name="apple-mobile-web-app-status-bar-style" content="default">
     <title>Goethe B1 Flashcards</title>
-    <link rel="stylesheet" href="style.css?v=25">
+    <link rel="stylesheet" href="style.css?v=26">
   </head>
   <body>
     <section class="lock-screen" id="lockScreen" aria-label="Password required">
@@ -152,6 +152,17 @@
           <button type="button" data-dashboard-action="statistics">Statistics</button>
         </div>
       </section>
+
+      <div class="level-celebration hidden" id="levelCelebration" role="status" aria-live="polite">
+        <div class="level-celebration-card">
+          <p class="eyebrow">Level up</p>
+          <h3 id="levelCelebrationTitle">🎉 Congratulations!</h3>
+          <p id="levelCelebrationProfile">You reached:</p>
+          <strong id="levelCelebrationLevel">🪙 Coin Pouch</strong>
+          <p id="levelCelebrationBonus">+25 bonus coins</p>
+          <button type="button" id="levelCelebrationClose">Nice!</button>
+        </div>
+      </div>
 
       <section class="control-panel hidden" id="controlPanel" aria-label="Study settings">
         <label>
@@ -335,6 +346,6 @@
       </footer>
     </main>
 
-    <script src="script.js?v=25"></script>
+    <script src="script.js?v=26"></script>
   </body>
 </html>

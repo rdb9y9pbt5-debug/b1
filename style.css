@@ -330,6 +330,52 @@ h1 {
   background: linear-gradient(135deg, var(--violet-soft), rgba(255, 253, 248, 0.94));
 }
 
+.level-celebration {
+  position: fixed;
+  inset: 0;
+  z-index: 20;
+  display: grid;
+  place-items: center;
+  padding: 20px;
+  background: rgba(31, 38, 35, 0.32);
+}
+
+.level-celebration-card {
+  width: min(420px, 100%);
+  border: 1px solid rgba(222, 216, 203, 0.92);
+  border-radius: 8px;
+  background: rgba(255, 253, 248, 0.98);
+  box-shadow: 0 22px 52px rgba(31, 38, 35, 0.24);
+  padding: clamp(22px, 5vw, 32px);
+  display: grid;
+  gap: 12px;
+  text-align: center;
+}
+
+.level-celebration-card h3 {
+  margin: 0;
+  font-size: clamp(1.8rem, 7vw, 2.6rem);
+  line-height: 1.05;
+}
+
+.level-celebration-card strong {
+  color: var(--violet);
+  font-size: clamp(1.45rem, 5vw, 2rem);
+}
+
+.level-celebration-card p {
+  margin: 0;
+  color: var(--muted);
+  font-weight: 800;
+}
+
+.level-celebration-card button {
+  min-height: 56px;
+  background: var(--violet);
+  color: white;
+  padding: 0 22px;
+}
+
 .earn-coins-card {
   background: linear-gradient(135deg, var(--amber-soft), rgba(255, 253, 248, 0.94));
   grid-template-columns: minmax(0, 1fr) minmax(160px, 0.28fr);

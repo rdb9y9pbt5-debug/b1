@@ -7,16 +7,17 @@ const PROFILE_STORAGE_KEY = "goethe-b1-profile-store-v1";
 const PROFILE_STORE_VERSION = 1;
 
 const DEFAULT_PROFILES = [
-  { id: "mineko", name: "Mineko", emoji: "⭐", avatar: "avatars/mineko.png" },
-  { id: "sami", name: "Sami", emoji: "🚀", avatar: "avatars/sami.png" },
-  { id: "mai", name: "Mai", emoji: "🌸", avatar: "avatars/mai.png" },
-  { id: "ziad", name: "Ziad", emoji: "📚", avatar: "avatars/ziad.png" }
+  { id: "mineko", name: "Mineko", emoji: "⭐", avatar: "mineko.png" },
+  { id: "sami", name: "Sami", emoji: "🚀", avatar: "sami.png" },
+  { id: "mai", name: "Mai", emoji: "🌸", avatar: "mai.png" },
+  { id: "ziad", name: "Ziad", emoji: "📚", avatar: "ziad.png" }
 ];
 
 const LEADERBOARD_PROFILE_IDS = ["mineko", "sami", "mai"];
 const DAILY_CHALLENGE_GOAL = 20;
 const DAILY_CHALLENGE_REWARD = 10;
 const STREAK_ACTIVITY_GOAL = 10;
+const LEVEL_UP_BONUS = 25;
 const COIN_LEVELS = [
   { min: 0, next: 50, icon: "🪙", name: "Coin Pouch" },
   { min: 50, next: 150, icon: "👛", name: "Wallet" },
@@ -69,6 +70,12 @@ const els = {
   levelCoins: document.querySelector("#levelCoins"),
   levelProgressFill: document.querySelector("#levelProgressFill"),
   levelProgressText: document.querySelector("#levelProgressText"),
+  levelCelebration: document.querySelector("#levelCelebration"),
+  levelCelebrationTitle: document.querySelector("#levelCelebrationTitle"),
+  levelCelebrationProfile: document.querySelector("#levelCelebrationProfile"),
+  levelCelebrationLevel: document.querySelector("#levelCelebrationLevel"),
+  levelCelebrationBonus: document.querySelector("#levelCelebrationBonus"),
+  levelCelebrationClose: document.querySelector("#levelCelebrationClose"),
   challengeTitle: document.querySelector("#challengeTitle"),
   challengeReward: document.querySelector("#challengeReward"),
   challengeStatus: document.querySelector("#challengeStatus"),
@@ -254,6 +261,7 @@ function normalizeProfileData(data, profile) {
     emoji: profile.emoji,
     avatar: data?.avatar || profile.avatar,
     coins: normalizeCoinCount(data?.coins),
+    levelBonusesAwarded: normalizeLevelBonuses(data?.levelBonusesAwarded, data?.coins),
     dailyChallenge: normalizeDailyChallenge(data?.dailyChallenge),
     streak: normalizeStreak(data?.streak),
     decks: data?.decks || {},
@@ -348,6 +356,14 @@ function normalizeStreak(value) {
 function normalizeCounter(value) {
   const count = Number(value);
   return Number.isFinite(count) && count > 0 ? Math.floor(count) : 0;
+}
+
+function normalizeLevelBonuses(savedLevels, coinValue) {
+  if (Array.isArray(savedLevels)) return savedLevels.map(String);
+  const coins = normalizeCoinCount(coinValue);
+  return COIN_LEVELS
+    .filter((level) => level.min > 0 && coins >= level.min)
+    .map((level) => getLevelId(level));
 }
 
 function readStorageObject(key) {
@@ -466,8 +482,8 @@ function renderDashboard() {
   els.levelCoins.textContent = normalizeCoinCount(profile.coins);
   els.levelProgressFill.style.width = `${levelPercent}%`;
   els.levelProgressText.textContent = level.next
-    ? `${normalizeCoinCount(profile.coins)} / ${level.next} coins`
-    : `${normalizeCoinCount(profile.coins)} coins`;
+    ? `${normalizeCoinCount(profile.coins)} / ${level.next} coins to next level`
+    : "Max level reached";
   els.challengeTitle.textContent = challenge.completed ? "✅ Challenge Complete" : "Today's Challenge";
   els.challengeReward.textContent = challenge.completed ? "+10 Coins Earned" : `Reward: +${DAILY_CHALLENGE_REWARD} coins`;
   els.challengeStatus.textContent = challenge.completed
@@ -548,6 +564,10 @@ function renderAvatar(container, profile) {
 function getCoinLevel(coinsValue) {
   const coins = normalizeCoinCount(coinsValue);
   return [...COIN_LEVELS].reverse().find((level) => coins >= level.min) || COIN_LEVELS[0];
+}
+
+function getLevelId(level) {
+  return `coins-${level.min}`;
 }
 
 function getLevelProgressPercent(coinsValue, level) {
@@ -842,6 +862,10 @@ function bindEvents() {
       applyModeAndFilter();
     });
   }
+
+  els.levelCelebrationClose.addEventListener("click", () => {
+    els.levelCelebration.classList.add("hidden");
+  });
 }
 
 function parseCsv(text) {
@@ -1211,8 +1235,33 @@ function answerArticleQuiz(article) {
 function awardCoins(amount) {
   if (!currentProfileId) return;
   const profile = getCurrentProfile();
-  profile.coins = normalizeCoinCount(profile.coins) + amount;
+  profile.coins = normalizeCoinCount(profile.coins) + normalizeCounter(amount);
+  awardLevelBonusIfNeeded(profile);
   saveProfileStore();
+}
+
+function awardLevelBonusIfNeeded(profile) {
+  profile.levelBonusesAwarded = normalizeLevelBonuses(profile.levelBonusesAwarded, 0);
+  const reachedLevel = [...COIN_LEVELS]
+    .reverse()
+    .find((level) => level.min > 0 && normalizeCoinCount(profile.coins) >= level.min);
+
+  if (!reachedLevel) return;
+
+  const levelId = getLevelId(reachedLevel);
+  if (profile.levelBonusesAwarded.includes(levelId)) return;
+
+  profile.levelBonusesAwarded.push(levelId);
+  profile.coins = normalizeCoinCount(profile.coins) + LEVEL_UP_BONUS;
+  showLevelCelebration(profile, reachedLevel);
+}
+
+function showLevelCelebration(profile, level) {
+  els.levelCelebrationTitle.textContent = "🎉 Congratulations!";
+  els.levelCelebrationProfile.textContent = `${profile.name} reached:`;
+  els.levelCelebrationLevel.textContent = `${level.icon} ${level.name}`;
+  els.levelCelebrationBonus.textContent = `+${LEVEL_UP_BONUS} bonus coins`;
+  els.levelCelebration.classList.remove("hidden");
 }
 
 function recordDailyActivity(type) {
