@@ -13,6 +13,8 @@ const DEFAULT_PROFILES = [
   { id: "ziad", name: "Ziad", emoji: "☕" }
 ];
 
+const LEADERBOARD_PROFILE_IDS = ["mineko", "sami", "mai"];
+
 const STANDARD_FILTERS = [
   ["all", "All words"],
   ["knownMeaning", "Known meaning"],
@@ -43,6 +45,8 @@ const els = {
   dashboardWordsTotal: document.querySelector("#dashboardWordsTotal"),
   dashboardArticlesLearned: document.querySelector("#dashboardArticlesLearned"),
   dashboardNounsTotal: document.querySelector("#dashboardNounsTotal"),
+  dashboardCurrentCoins: document.querySelector("#dashboardCurrentCoins"),
+  leaderboardList: document.querySelector("#leaderboardList"),
   controlPanel: document.querySelector("#controlPanel"),
   searchPanel: document.querySelector("#searchPanel"),
   statsGrid: document.querySelector("#statsGrid"),
@@ -219,6 +223,7 @@ function normalizeProfileData(data, profile) {
     id: profile.id,
     name: data?.name || profile.name,
     emoji: data?.emoji || profile.emoji,
+    coins: normalizeCoinCount(data?.coins),
     decks: data?.decks || {},
     progress: normalizeMeaningProgress(data?.progress || {}),
     articleProgress: normalizeArticleProgress(data?.articleProgress || {}),
@@ -268,6 +273,11 @@ function normalizeArticleStatus(value) {
   if (value === "known") return "known";
   if (value === "kindOf" || value === "unsure" || value === "unknown") return "unknown";
   return "unrated";
+}
+
+function normalizeCoinCount(value) {
+  const coins = Number(value);
+  return Number.isFinite(coins) && coins > 0 ? Math.floor(coins) : 0;
 }
 
 function readStorageObject(key) {
@@ -371,6 +381,30 @@ function renderDashboard() {
   els.dashboardWordsTotal.textContent = cards.length;
   els.dashboardArticlesLearned.textContent = articleSummary.known;
   els.dashboardNounsTotal.textContent = articleSummary.nouns;
+  els.dashboardCurrentCoins.textContent = normalizeCoinCount(profile.coins);
+  renderCoinLeaderboard();
+}
+
+function renderCoinLeaderboard() {
+  const medals = ["🥇", "🥈", "🥉"];
+  const rows = LEADERBOARD_PROFILE_IDS
+    .map((profileId) => profileStore.profiles[profileId])
+    .filter(Boolean)
+    .sort((first, second) => normalizeCoinCount(second.coins) - normalizeCoinCount(first.coins));
+
+  els.leaderboardList.replaceChildren(
+    ...rows.map((profile, index) => {
+      const row = document.createElement("div");
+      row.className = "leaderboard-row";
+      row.classList.toggle("current", profile.id === currentProfileId);
+      row.innerHTML = `
+        <span class="leaderboard-rank">${medals[index] || ""}</span>
+        <span class="leaderboard-name">${escapeHtml(profile.name)}</span>
+        <strong>${normalizeCoinCount(profile.coins)} coins</strong>
+      `;
+      return row;
+    })
+  );
 }
 
 function handleDashboardAction(action) {
@@ -908,10 +942,20 @@ function answerArticleQuiz(article) {
     articleStatus: status,
     updatedAt: new Date().toISOString()
   };
+  if (status === "known") {
+    awardCoins(1);
+  }
   recordStudyHistory("article-quiz", card, status);
   saveArticleProgress();
   updateStats();
   renderCard();
+}
+
+function awardCoins(amount) {
+  if (!currentProfileId) return;
+  const profile = getCurrentProfile();
+  profile.coins = normalizeCoinCount(profile.coins) + amount;
+  saveProfileStore();
 }
 
 function rateArticleCard(rating) {
