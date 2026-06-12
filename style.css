@@ -559,17 +559,17 @@ h1 {
 .dashboard-progress {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: 12px;
+  gap: 10px;
 }
 
 .dashboard-card {
-  min-height: 145px;
+  min-height: 86px;
   border: 1px solid rgba(222, 216, 203, 0.92);
   border-radius: 8px;
-  padding: clamp(18px, 3vw, 28px);
+  padding: clamp(12px, 2vw, 16px);
   display: grid;
-  align-content: space-between;
-  gap: 18px;
+  align-content: center;
+  gap: 8px;
   background: rgba(255, 253, 248, 0.86);
   box-shadow: var(--shadow);
 }
@@ -589,12 +589,12 @@ h1 {
 
 .dashboard-card > span {
   color: var(--muted);
-  font-size: clamp(0.88rem, 2vw, 1rem);
+  font-size: clamp(0.78rem, 1.7vw, 0.95rem);
 }
 
 .dashboard-card strong {
   color: var(--ink);
-  font-size: clamp(2.1rem, 6vw, 4.2rem);
+  font-size: clamp(1.55rem, 4.2vw, 2.4rem);
   line-height: 0.95;
 }
 
@@ -1111,14 +1111,14 @@ select,
   }
 
   .dashboard-progress {
-    grid-template-columns: 1fr;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
     gap: 8px;
   }
 
   .dashboard-card {
-    min-height: 106px;
-    padding: 16px;
-    gap: 10px;
+    min-height: 76px;
+    padding: 12px;
+    gap: 7px;
   }
 
   .dashboard-actions {
@@ -1232,7 +1232,7 @@ select,
   }
 
   .dashboard-card strong {
-    font-size: clamp(1.8rem, 12vw, 2.7rem);
+    font-size: clamp(1.35rem, 8vw, 2rem);
   }
 
   .level-card h3,
@@ -1256,6 +1256,10 @@ select,
   .dashboard-actions button {
     min-height: 58px;
     font-size: 0.88rem;
+  }
+
+  .dashboard-card {
+    padding: 10px;
   }
 
   .search-result {
@@ -1371,5 +1375,11 @@ select,
   .nav-buttons button,
   .article-quiz-options button {
     min-height: 48px;
+  }
+}
+
+@media (max-width: 340px) {
+  .dashboard-progress {
+    grid-template-columns: 1fr;
   }
 }
