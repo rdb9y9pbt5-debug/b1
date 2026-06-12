@@ -51,7 +51,8 @@ const els = {
   resetProgress: document.querySelector("#resetProgress"),
   statWordsLearned: document.querySelector("#statWordsLearned"),
   statWordsTotal: document.querySelector("#statWordsTotal"),
-  statArticleGapSummary: document.querySelector("#statArticleGapSummary"),
+  statArticlesLearned: document.querySelector("#statArticlesLearned"),
+  statNounsTotal: document.querySelector("#statNounsTotal"),
   statMeaningKnown: document.querySelector("#statMeaningKnown"),
   statMeaningUnsure: document.querySelector("#statMeaningUnsure"),
   statMeaningUnknown: document.querySelector("#statMeaningUnknown"),
@@ -752,11 +753,12 @@ function updateStats() {
   const articles = cards.reduce(
     (total, card) => {
       if (!card.isNoun) return total;
+      total.nouns += 1;
       total[getArticleStatus(card)] += 1;
       if (getMeaningStatus(card) === "known" && getArticleStatus(card) !== "known") total.gap += 1;
       return total;
     },
-    { known: 0, unknown: 0, unrated: 0, gap: 0 }
+    { known: 0, unknown: 0, unrated: 0, gap: 0, nouns: 0 }
   );
 
   els.statMeaningKnown.textContent = meaning.known;
@@ -767,7 +769,8 @@ function updateStats() {
   els.statArticleUnknown.textContent = articles.unknown;
   els.statArticleUnrated.textContent = articles.unrated;
   els.statArticleGap.textContent = articles.gap;
-  els.statArticleGapSummary.textContent = articles.gap;
+  els.statArticlesLearned.textContent = articles.known;
+  els.statNounsTotal.textContent = articles.nouns;
   els.statWordsLearned.textContent = getWordsLearnedCount();
   els.statWordsTotal.textContent = cards.length;
 }
