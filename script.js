@@ -37,6 +37,17 @@ const els = {
   profileScreen: document.querySelector("#profileScreen"),
   profileGrid: document.querySelector("#profileGrid"),
   appShell: document.querySelector("#appShell"),
+  dashboardScreen: document.querySelector("#dashboardScreen"),
+  dashboardWelcome: document.querySelector("#dashboardWelcome"),
+  dashboardWordsLearned: document.querySelector("#dashboardWordsLearned"),
+  dashboardWordsTotal: document.querySelector("#dashboardWordsTotal"),
+  dashboardArticlesLearned: document.querySelector("#dashboardArticlesLearned"),
+  dashboardNounsTotal: document.querySelector("#dashboardNounsTotal"),
+  controlPanel: document.querySelector("#controlPanel"),
+  searchPanel: document.querySelector("#searchPanel"),
+  statsGrid: document.querySelector("#statsGrid"),
+  studyStage: document.querySelector("#studyStage"),
+  actionBar: document.querySelector("#actionBar"),
   deckStatus: document.querySelector("#deckStatus"),
   currentProfileLabel: document.querySelector("#currentProfileLabel"),
   modeSelect: document.querySelector("#modeSelect"),
@@ -46,6 +57,7 @@ const els = {
   wordSearchInput: document.querySelector("#wordSearchInput"),
   searchResults: document.querySelector("#searchResults"),
   csvInput: document.querySelector("#csvInput"),
+  homeButton: document.querySelector("#homeButton"),
   switchProfile: document.querySelector("#switchProfile"),
   lockApp: document.querySelector("#lockApp"),
   resetProgress: document.querySelector("#resetProgress"),
@@ -94,6 +106,7 @@ let currentProfileId = "";
 let searchResults = [];
 let randomSessionKey = "";
 let randomSessionIds = [];
+let currentView = "dashboard";
 
 document.addEventListener("DOMContentLoaded", init);
 
@@ -293,6 +306,7 @@ function selectProfile(profileId) {
   updateFilterOptions();
   currentIndex = 0;
   applyModeAndFilter();
+  showDashboard();
 }
 
 function getCurrentProfile() {
@@ -317,6 +331,70 @@ function saveSettings() {
     order: els.orderSelect.value
   };
   saveProfileStore();
+}
+
+function showDashboard() {
+  currentView = "dashboard";
+  renderDashboard();
+  els.dashboardScreen.classList.remove("hidden");
+  els.controlPanel.classList.add("hidden");
+  els.searchPanel.classList.add("hidden");
+  els.statsGrid.classList.add("hidden");
+  els.studyStage.classList.add("hidden");
+  els.actionBar.classList.add("hidden");
+}
+
+function showStudyView(options = {}) {
+  currentView = "study";
+  els.dashboardScreen.classList.add("hidden");
+  els.controlPanel.classList.toggle("hidden", options.hideControls === true);
+  els.searchPanel.classList.remove("hidden");
+  els.statsGrid.classList.remove("hidden");
+  els.studyStage.classList.remove("hidden");
+  els.actionBar.classList.remove("hidden");
+  if (options.focusSearch) {
+    window.setTimeout(() => els.wordSearchInput.focus(), 0);
+  }
+  if (options.openStats) {
+    document.querySelector(".detailed-stats")?.setAttribute("open", "");
+  } else {
+    document.querySelector(".detailed-stats")?.removeAttribute("open");
+  }
+}
+
+function renderDashboard() {
+  if (!currentProfileId) return;
+  const profile = getCurrentProfile();
+  const articleSummary = getArticleSummary();
+  els.dashboardWelcome.textContent = `Welcome back, ${profile.name}`;
+  els.dashboardWordsLearned.textContent = getWordsLearnedCount();
+  els.dashboardWordsTotal.textContent = cards.length;
+  els.dashboardArticlesLearned.textContent = articleSummary.known;
+  els.dashboardNounsTotal.textContent = articleSummary.nouns;
+}
+
+function handleDashboardAction(action) {
+  const routes = {
+    continue: { mode: "de-en", filter: "all" },
+    articles: { mode: "article", filter: "allArticle" },
+    "unknown-meanings": { mode: "de-en", filter: "unknownMeaning" },
+    "unknown-articles": { mode: "article", filter: "unknownArticles" },
+    search: { mode: "de-en", filter: "all", focusSearch: true },
+    statistics: { mode: els.modeSelect.value, filter: els.filterSelect.value, openStats: true }
+  };
+  const route = routes[action];
+  if (!route) return;
+
+  els.modeSelect.value = route.mode;
+  updateFilterOptions();
+  els.filterSelect.value = getValidFilterValue(route.filter);
+  els.startSelect.value = "all";
+  currentIndex = 0;
+  randomSessionKey = "";
+  randomSessionIds = [];
+  saveSettings();
+  applyModeAndFilter();
+  showStudyView({ focusSearch: route.focusSearch, openStats: route.openStats });
 }
 
 function renderProfileCards() {
@@ -378,6 +456,12 @@ function bindEvents() {
     selectProfile(button.dataset.profileId);
   });
 
+  els.dashboardScreen.addEventListener("click", (event) => {
+    const button = event.target.closest("button[data-dashboard-action]");
+    if (!button) return;
+    handleDashboardAction(button.dataset.dashboardAction);
+  });
+
   els.modeSelect.addEventListener("change", () => {
     currentIndex = 0;
     updateFilterOptions();
@@ -417,6 +501,8 @@ function bindEvents() {
 
   els.previousCard.addEventListener("click", () => moveCard(-1));
   els.nextCard.addEventListener("click", () => moveCard(1));
+
+  els.homeButton.addEventListener("click", showDashboard);
 
   els.ratingButtons.addEventListener("click", (event) => {
     const button = event.target.closest("button[data-rating]");
@@ -747,16 +833,7 @@ function updateStats() {
     { known: 0, unsure: 0, unknown: 0, unrated: 0 }
   );
 
-  const articles = cards.reduce(
-    (total, card) => {
-      if (!card.isNoun) return total;
-      total.nouns += 1;
-      total[getArticleStatus(card)] += 1;
-      if (getMeaningStatus(card) === "known" && getArticleStatus(card) !== "known") total.gap += 1;
-      return total;
-    },
-    { known: 0, unknown: 0, unrated: 0, gap: 0, nouns: 0 }
-  );
+  const articles = getArticleSummary();
 
   els.statMeaningKnown.textContent = meaning.known;
   els.statMeaningUnsure.textContent = meaning.unsure;
@@ -770,6 +847,7 @@ function updateStats() {
   els.statNounsTotal.textContent = articles.nouns;
   els.statWordsLearned.textContent = getWordsLearnedCount();
   els.statWordsTotal.textContent = cards.length;
+  if (currentView === "dashboard") renderDashboard();
 }
 
 function renderArticleResult(card) {
@@ -878,6 +956,19 @@ function getMeaningStatus(card) {
 function getArticleStatus(card) {
   const entry = articleProgress[card.id];
   return normalizeArticleStatus(entry?.articleStatus || entry?.rating);
+}
+
+function getArticleSummary() {
+  return cards.reduce(
+    (total, card) => {
+      if (!card.isNoun) return total;
+      total.nouns += 1;
+      total[getArticleStatus(card)] += 1;
+      if (getMeaningStatus(card) === "known" && getArticleStatus(card) !== "known") total.gap += 1;
+      return total;
+    },
+    { known: 0, unknown: 0, unrated: 0, gap: 0, nouns: 0 }
+  );
 }
 
 function getWordsLearnedCount() {
