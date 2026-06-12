@@ -8,7 +8,7 @@
     <meta name="apple-mobile-web-app-title" content="B1 Karten">
     <meta name="apple-mobile-web-app-status-bar-style" content="default">
     <title>Goethe B1 Flashcards</title>
-    <link rel="stylesheet" href="style.css?v=7">
+    <link rel="stylesheet" href="style.css?v=8">
   </head>
   <body>
     <section class="lock-screen" id="lockScreen" aria-label="Password required">
@@ -107,6 +107,14 @@
         </label>
       </section>
 
+      <section class="search-panel" aria-label="Search German vocabulary">
+        <label>
+          <span>Search German word</span>
+          <input id="wordSearchInput" type="search" autocomplete="off" spellcheck="false" placeholder="fahr, Haus, Termin">
+        </label>
+        <div class="search-results hidden" id="searchResults" aria-live="polite"></div>
+      </section>
+
       <section class="stats-grid" aria-label="Progress statistics">
         <article>
           <span id="statTotalLabel">Total</span>
@@ -201,6 +209,6 @@
       </footer>
     </main>
 
-    <script src="script.js?v=7"></script>
+    <script src="script.js?v=8"></script>
   </body>
 </html>
