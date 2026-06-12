@@ -8,7 +8,7 @@
     <meta name="apple-mobile-web-app-title" content="B1 Karten">
     <meta name="apple-mobile-web-app-status-bar-style" content="default">
     <title>Goethe B1 Flashcards</title>
-    <link rel="stylesheet" href="style.css?v=22">
+    <link rel="stylesheet" href="style.css?v=23">
   </head>
   <body>
     <section class="lock-screen" id="lockScreen" aria-label="Password required">
@@ -74,6 +74,15 @@
           <p class="progress-note" id="levelProgressText">0 / 50 coins</p>
         </article>
 
+        <article class="earn-coins-card" aria-label="Earn coins">
+          <div>
+            <h3>⭐ Earn Coins</h3>
+            <p>Answer article questions correctly.</p>
+            <p>+1 coin per correct answer.</p>
+          </div>
+          <button class="start-earning-button" type="button" data-dashboard-action="earn-coins">Start Earning</button>
+        </article>
+
         <article class="challenge-card" aria-label="Daily challenge">
           <div class="challenge-heading">
             <h3 id="challengeTitle">Today's Challenge</h3>
@@ -108,7 +117,6 @@
         </div>
 
         <div class="dashboard-actions" aria-label="Dashboard actions">
-          <button class="start-earning-button" type="button" data-dashboard-action="earn-coins">Start Earning</button>
           <button type="button" data-dashboard-action="continue">Continue Vocabulary Study</button>
           <button type="button" data-dashboard-action="articles">Practice Articles</button>
           <button type="button" data-dashboard-action="unknown-meanings">Review Unknown Meanings</button>
@@ -300,6 +308,6 @@
       </footer>
     </main>
 
-    <script src="script.js?v=22"></script>
+    <script src="script.js?v=23"></script>
   </body>
 </html>
