@@ -427,7 +427,7 @@ select,
 .detailed-stats-grid {
   border-top: 1px solid rgba(222, 216, 203, 0.86);
   display: grid;
-  grid-template-columns: repeat(9, 1fr);
+  grid-template-columns: repeat(8, 1fr);
   gap: 8px;
   padding: 8px;
 }
@@ -511,8 +511,7 @@ select,
   gap: 12px;
 }
 
-.article-quiz-options,
-.article-rating-buttons {
+.article-quiz-options {
   display: grid;
   gap: 10px;
 }
@@ -521,12 +520,7 @@ select,
   grid-template-columns: repeat(3, 1fr);
 }
 
-.article-rating-buttons {
-  grid-template-columns: repeat(3, 1fr);
-}
-
-.article-quiz-options button,
-.article-rating-buttons button {
+.article-quiz-options button {
   min-height: 62px;
   font-size: clamp(1.05rem, 2.4vw, 1.35rem);
 }
@@ -587,21 +581,6 @@ select,
 }
 
 .article-quiz-result.error {
-  background: var(--red-soft);
-  color: var(--red);
-}
-
-.article-rating-buttons .know {
-  background: var(--green-soft);
-  color: var(--green);
-}
-
-.article-rating-buttons .kind-of {
-  background: var(--amber-soft);
-  color: var(--amber);
-}
-
-.article-rating-buttons .dont-know {
   background: var(--red-soft);
   color: var(--red);
 }
@@ -675,6 +654,10 @@ select,
   display: grid;
   grid-template-columns: repeat(3, 1fr);
   gap: 10px;
+}
+
+.rating-buttons.article-rating-mode {
+  grid-template-columns: repeat(2, 1fr);
 }
 
 .rating-buttons .know {
@@ -782,13 +765,8 @@ select,
   .primary-button,
   .rating-buttons button,
   .nav-buttons button,
-  .article-quiz-options button,
-  .article-rating-buttons button {
+  .article-quiz-options button {
     min-height: 56px;
-  }
-
-  .article-rating-buttons {
-    grid-template-columns: 1fr;
   }
 }
 
@@ -905,13 +883,11 @@ select,
     gap: 8px;
   }
 
-  .article-quiz-options,
-  .article-rating-buttons {
+  .article-quiz-options {
     gap: 6px;
   }
 
-  .article-quiz-options button,
-  .article-rating-buttons button {
+  .article-quiz-options button {
     min-height: 44px;
     font-size: 0.94rem;
   }
@@ -943,8 +919,7 @@ select,
   .primary-button,
   .rating-buttons button,
   .nav-buttons button,
-  .article-quiz-options button,
-  .article-rating-buttons button {
+  .article-quiz-options button {
     min-height: 48px;
   }
 }
