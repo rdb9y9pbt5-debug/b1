@@ -8,7 +8,7 @@
     <meta name="apple-mobile-web-app-title" content="B1 Karten">
     <meta name="apple-mobile-web-app-status-bar-style" content="default">
     <title>Goethe B1 Flashcards</title>
-    <link rel="stylesheet" href="style.css?v=21">
+    <link rel="stylesheet" href="style.css?v=22">
   </head>
   <body>
     <section class="lock-screen" id="lockScreen" aria-label="Password required">
@@ -62,17 +62,34 @@
           </div>
         </div>
 
-        <article class="coins-card" aria-label="Earn coins">
+        <article class="level-card" aria-label="Coin level">
           <div>
-            <h3>⭐ Earn Coins</h3>
-            <p>Answer article questions correctly.</p>
-            <p>+1 coin for every correct article answer.</p>
-            <p>Your coins are saved to your profile.</p>
+            <p class="eyebrow">Current Level</p>
+            <h3><span id="levelIcon">🪙</span> <span id="levelName">Coin Pouch</span></h3>
+            <strong><span id="levelCoins">0</span> Coins</strong>
           </div>
-          <strong class="coin-total">Your coins: <span id="dashboardCurrentCoins">0</span></strong>
+          <div class="progress-track" aria-hidden="true">
+            <span id="levelProgressFill"></span>
+          </div>
+          <p class="progress-note" id="levelProgressText">0 / 50 coins</p>
         </article>
 
-        <button class="start-earning-button" type="button" data-dashboard-action="earn-coins">Start Earning</button>
+        <article class="challenge-card" aria-label="Daily challenge">
+          <div class="challenge-heading">
+            <h3 id="challengeTitle">Today's Challenge</h3>
+            <strong id="challengeReward">+10 coins</strong>
+          </div>
+          <p id="challengeStatus">0 / 20 article questions</p>
+          <div class="progress-track" aria-hidden="true">
+            <span id="challengeProgressFill"></span>
+          </div>
+        </article>
+
+        <article class="streak-card" aria-label="Study streak">
+          <h3>🔥 Current Streak</h3>
+          <strong id="streakCurrent">0 Day Streak</strong>
+          <p id="streakBest">Best Streak: 0 days</p>
+        </article>
 
         <section class="leaderboard-card" aria-label="Family coin leaderboard">
           <h3>🏆 Family Coin Leaderboard</h3>
@@ -91,6 +108,7 @@
         </div>
 
         <div class="dashboard-actions" aria-label="Dashboard actions">
+          <button class="start-earning-button" type="button" data-dashboard-action="earn-coins">Start Earning</button>
           <button type="button" data-dashboard-action="continue">Continue Vocabulary Study</button>
           <button type="button" data-dashboard-action="articles">Practice Articles</button>
           <button type="button" data-dashboard-action="unknown-meanings">Review Unknown Meanings</button>
@@ -282,6 +300,6 @@
       </footer>
     </main>
 
-    <script src="script.js?v=21"></script>
+    <script src="script.js?v=22"></script>
   </body>
 </html>
