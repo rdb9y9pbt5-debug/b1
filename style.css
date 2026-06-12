@@ -358,7 +358,7 @@ select,
 
 .stats-grid {
   display: grid;
-  grid-template-columns: repeat(6, 1fr);
+  grid-template-columns: repeat(9, 1fr);
   gap: 8px;
 }
 
@@ -505,11 +505,27 @@ select,
 
 .article-quiz-result {
   border-radius: 8px;
-  padding: 12px 14px;
+  padding: clamp(14px, 2.4vw, 24px);
   text-align: center;
-  font-size: clamp(1rem, 2.2vw, 1.25rem);
   font-weight: 900;
   line-height: 1.25;
+  display: grid;
+  gap: 6px;
+}
+
+.quiz-result-label {
+  font-size: clamp(2.1rem, 6vw, 4.2rem);
+  line-height: 1;
+}
+
+.quiz-result-answer {
+  font-size: clamp(1.35rem, 3.4vw, 2.2rem);
+}
+
+.quiz-result-meaning {
+  color: var(--muted);
+  font-size: clamp(1rem, 2vw, 1.2rem);
+  font-weight: 800;
 }
 
 .article-quiz-result.success {
@@ -608,10 +624,6 @@ select,
   gap: 10px;
 }
 
-.rating-buttons.noun-card {
-  grid-template-columns: repeat(4, 1fr);
-}
-
 .rating-buttons .know {
   background: var(--green-soft);
   color: var(--green);
@@ -678,7 +690,7 @@ select,
   }
 
   .stats-grid {
-    grid-template-columns: repeat(6, minmax(0, 1fr));
+    grid-template-columns: repeat(3, minmax(0, 1fr));
     gap: 5px;
   }
 
@@ -716,10 +728,6 @@ select,
   .article-quiz-options button,
   .article-rating-buttons button {
     min-height: 56px;
-  }
-
-  .rating-buttons.noun-card {
-    grid-template-columns: repeat(2, 1fr);
   }
 
   .article-rating-buttons {
