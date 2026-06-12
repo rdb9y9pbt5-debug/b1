@@ -14,6 +14,17 @@ const DEFAULT_PROFILES = [
 ];
 
 const LEADERBOARD_PROFILE_IDS = ["mineko", "sami", "mai"];
+const DAILY_CHALLENGE_GOAL = 20;
+const DAILY_CHALLENGE_REWARD = 10;
+const STREAK_ACTIVITY_GOAL = 10;
+const COIN_LEVELS = [
+  { min: 0, next: 50, icon: "🪙", name: "Coin Pouch" },
+  { min: 50, next: 200, icon: "👛", name: "Wallet" },
+  { min: 200, next: 500, icon: "🐷", name: "Piggy Bank" },
+  { min: 500, next: 1000, icon: "🏧", name: "ATM" },
+  { min: 1000, next: 2000, icon: "🏦", name: "Bank" },
+  { min: 2000, next: null, icon: "💎", name: "Investment Fund" }
+];
 
 const STANDARD_FILTERS = [
   ["all", "All words"],
@@ -45,7 +56,17 @@ const els = {
   dashboardWordsTotal: document.querySelector("#dashboardWordsTotal"),
   dashboardArticlesLearned: document.querySelector("#dashboardArticlesLearned"),
   dashboardNounsTotal: document.querySelector("#dashboardNounsTotal"),
-  dashboardCurrentCoins: document.querySelector("#dashboardCurrentCoins"),
+  levelIcon: document.querySelector("#levelIcon"),
+  levelName: document.querySelector("#levelName"),
+  levelCoins: document.querySelector("#levelCoins"),
+  levelProgressFill: document.querySelector("#levelProgressFill"),
+  levelProgressText: document.querySelector("#levelProgressText"),
+  challengeTitle: document.querySelector("#challengeTitle"),
+  challengeReward: document.querySelector("#challengeReward"),
+  challengeStatus: document.querySelector("#challengeStatus"),
+  challengeProgressFill: document.querySelector("#challengeProgressFill"),
+  streakCurrent: document.querySelector("#streakCurrent"),
+  streakBest: document.querySelector("#streakBest"),
   leaderboardList: document.querySelector("#leaderboardList"),
   controlPanel: document.querySelector("#controlPanel"),
   searchPanel: document.querySelector("#searchPanel"),
@@ -224,6 +245,8 @@ function normalizeProfileData(data, profile) {
     name: data?.name || profile.name,
     emoji: data?.emoji || profile.emoji,
     coins: normalizeCoinCount(data?.coins),
+    dailyChallenge: normalizeDailyChallenge(data?.dailyChallenge),
+    streak: normalizeStreak(data?.streak),
     decks: data?.decks || {},
     progress: normalizeMeaningProgress(data?.progress || {}),
     articleProgress: normalizeArticleProgress(data?.articleProgress || {}),
@@ -278,6 +301,30 @@ function normalizeArticleStatus(value) {
 function normalizeCoinCount(value) {
   const coins = Number(value);
   return Number.isFinite(coins) && coins > 0 ? Math.floor(coins) : 0;
+}
+
+function normalizeDailyChallenge(value) {
+  return {
+    date: typeof value?.date === "string" ? value.date : getTodayKey(),
+    articleQuestions: normalizeCounter(value?.articleQuestions),
+    completed: Boolean(value?.completed)
+  };
+}
+
+function normalizeStreak(value) {
+  return {
+    current: normalizeCounter(value?.current),
+    best: normalizeCounter(value?.best),
+    lastQualifiedDate: typeof value?.lastQualifiedDate === "string" ? value.lastQualifiedDate : "",
+    activityDate: typeof value?.activityDate === "string" ? value.activityDate : getTodayKey(),
+    articleQuestions: normalizeCounter(value?.articleQuestions),
+    vocabularyCards: normalizeCounter(value?.vocabularyCards)
+  };
+}
+
+function normalizeCounter(value) {
+  const count = Number(value);
+  return Number.isFinite(count) && count > 0 ? Math.floor(count) : 0;
 }
 
 function readStorageObject(key) {
@@ -375,14 +422,34 @@ function showStudyView(options = {}) {
 function renderDashboard() {
   if (!currentProfileId) return;
   const profile = getCurrentProfile();
+  prepareProfileDailyState(profile);
   const articleSummary = getArticleSummary();
+  const level = getCoinLevel(profile.coins);
+  const levelPercent = getLevelProgressPercent(profile.coins, level);
+  const challenge = profile.dailyChallenge;
+  const streak = getDisplayStreak(profile);
   els.dashboardWelcome.textContent = `Welcome back, ${profile.name}`;
   els.dashboardWordsLearned.textContent = getWordsLearnedCount();
   els.dashboardWordsTotal.textContent = cards.length;
   els.dashboardArticlesLearned.textContent = articleSummary.known;
   els.dashboardNounsTotal.textContent = articleSummary.nouns;
-  els.dashboardCurrentCoins.textContent = normalizeCoinCount(profile.coins);
+  els.levelIcon.textContent = level.icon;
+  els.levelName.textContent = level.name;
+  els.levelCoins.textContent = normalizeCoinCount(profile.coins);
+  els.levelProgressFill.style.width = `${levelPercent}%`;
+  els.levelProgressText.textContent = level.next
+    ? `${normalizeCoinCount(profile.coins)} / ${level.next} coins`
+    : `${normalizeCoinCount(profile.coins)} coins`;
+  els.challengeTitle.textContent = challenge.completed ? "✅ Challenge Complete" : "Today's Challenge";
+  els.challengeReward.textContent = challenge.completed ? "+10 Coins Earned" : `Reward: +${DAILY_CHALLENGE_REWARD} coins`;
+  els.challengeStatus.textContent = challenge.completed
+    ? `${DAILY_CHALLENGE_GOAL} / ${DAILY_CHALLENGE_GOAL} article questions`
+    : `${Math.min(challenge.articleQuestions, DAILY_CHALLENGE_GOAL)} / ${DAILY_CHALLENGE_GOAL} article questions`;
+  els.challengeProgressFill.style.width = `${Math.min((challenge.articleQuestions / DAILY_CHALLENGE_GOAL) * 100, 100)}%`;
+  els.streakCurrent.textContent = `🔥 ${streak.current} Day Streak`;
+  els.streakBest.textContent = `Best Streak: ${streak.best} days`;
   renderCoinLeaderboard();
+  saveProfileStore();
 }
 
 function renderCoinLeaderboard() {
@@ -405,6 +472,45 @@ function renderCoinLeaderboard() {
       return row;
     })
   );
+}
+
+function getCoinLevel(coinsValue) {
+  const coins = normalizeCoinCount(coinsValue);
+  return [...COIN_LEVELS].reverse().find((level) => coins >= level.min) || COIN_LEVELS[0];
+}
+
+function getLevelProgressPercent(coinsValue, level) {
+  const coins = normalizeCoinCount(coinsValue);
+  if (!level.next) return 100;
+  return Math.min(((coins - level.min) / (level.next - level.min)) * 100, 100);
+}
+
+function prepareProfileDailyState(profile) {
+  const today = getTodayKey();
+  profile.dailyChallenge = normalizeDailyChallenge(profile.dailyChallenge);
+  profile.streak = normalizeStreak(profile.streak);
+
+  if (profile.dailyChallenge.date !== today) {
+    profile.dailyChallenge = { date: today, articleQuestions: 0, completed: false };
+  }
+
+  if (profile.streak.activityDate !== today) {
+    profile.streak.activityDate = today;
+    profile.streak.articleQuestions = 0;
+    profile.streak.vocabularyCards = 0;
+  }
+
+  if (profile.streak.lastQualifiedDate && getDayDistance(profile.streak.lastQualifiedDate, today) > 1) {
+    profile.streak.current = 0;
+  }
+}
+
+function getDisplayStreak(profile) {
+  prepareProfileDailyState(profile);
+  return {
+    current: normalizeCounter(profile.streak.current),
+    best: normalizeCounter(profile.streak.best)
+  };
 }
 
 function handleDashboardAction(action) {
@@ -850,6 +956,7 @@ function rateCard(rating) {
     updatedAt: new Date().toISOString()
   };
   recordStudyHistory("flashcard", card, normalizeMeaningStatus(rating));
+  recordDailyActivity("vocabulary");
   saveProgress();
 
   if (visibleCards.length > 1) {
@@ -945,6 +1052,7 @@ function answerArticleQuiz(article) {
   if (status === "known") {
     awardCoins(1);
   }
+  recordDailyActivity("article");
   recordStudyHistory("article-quiz", card, status);
   saveArticleProgress();
   updateStats();
@@ -956,6 +1064,41 @@ function awardCoins(amount) {
   const profile = getCurrentProfile();
   profile.coins = normalizeCoinCount(profile.coins) + amount;
   saveProfileStore();
+}
+
+function recordDailyActivity(type) {
+  if (!currentProfileId) return;
+  const profile = getCurrentProfile();
+  prepareProfileDailyState(profile);
+
+  if (type === "article") {
+    profile.dailyChallenge.articleQuestions += 1;
+    profile.streak.articleQuestions += 1;
+    if (!profile.dailyChallenge.completed && profile.dailyChallenge.articleQuestions >= DAILY_CHALLENGE_GOAL) {
+      profile.dailyChallenge.completed = true;
+      awardCoins(DAILY_CHALLENGE_REWARD);
+    }
+  }
+
+  if (type === "vocabulary") {
+    profile.streak.vocabularyCards += 1;
+  }
+
+  updateStreakQualification(profile);
+  saveProfileStore();
+}
+
+function updateStreakQualification(profile) {
+  const today = getTodayKey();
+  const qualifiesToday = profile.streak.articleQuestions >= STREAK_ACTIVITY_GOAL
+    || profile.streak.vocabularyCards >= STREAK_ACTIVITY_GOAL;
+
+  if (!qualifiesToday || profile.streak.lastQualifiedDate === today) return;
+
+  const distance = profile.streak.lastQualifiedDate ? getDayDistance(profile.streak.lastQualifiedDate, today) : null;
+  profile.streak.current = distance === 1 ? normalizeCounter(profile.streak.current) + 1 : 1;
+  profile.streak.best = Math.max(normalizeCounter(profile.streak.best), profile.streak.current);
+  profile.streak.lastQualifiedDate = today;
 }
 
 function rateArticleCard(rating) {
@@ -1174,6 +1317,27 @@ function slugify(value) {
     .replace(/[\u0300-\u036f]/g, "")
     .replace(/[^a-z0-9]+/g, "-")
     .replace(/^-|-$/g, "");
+}
+
+function getTodayKey() {
+  const now = new Date();
+  const year = now.getFullYear();
+  const month = String(now.getMonth() + 1).padStart(2, "0");
+  const day = String(now.getDate()).padStart(2, "0");
+  return `${year}-${month}-${day}`;
+}
+
+function getDayDistance(fromDate, toDate) {
+  const from = parseDateKey(fromDate);
+  const to = parseDateKey(toDate);
+  if (!from || !to) return 0;
+  return Math.round((to.getTime() - from.getTime()) / 86400000);
+}
+
+function parseDateKey(value) {
+  const match = /^(\d{4})-(\d{2})-(\d{2})$/.exec(value || "");
+  if (!match) return null;
+  return new Date(Number(match[1]), Number(match[2]) - 1, Number(match[3]));
 }
 
 function clamp(value, min, max) {

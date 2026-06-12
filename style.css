@@ -284,38 +284,88 @@ h1 {
   line-height: 1.05;
 }
 
-.coins-card {
+.level-card,
+.challenge-card,
+.streak-card {
   min-height: 120px;
   border: 1px solid rgba(222, 216, 203, 0.92);
   border-radius: 8px;
-  background: linear-gradient(135deg, var(--violet-soft), rgba(255, 253, 248, 0.94));
   box-shadow: var(--shadow);
   padding: clamp(16px, 2.6vw, 24px);
+  display: grid;
+  gap: 12px;
 }
 
-.coins-card h3 {
+.level-card {
+  background: linear-gradient(135deg, var(--violet-soft), rgba(255, 253, 248, 0.94));
+}
+
+.challenge-card {
+  background: linear-gradient(135deg, var(--green-soft), rgba(255, 253, 248, 0.94));
+}
+
+.streak-card {
+  background: linear-gradient(135deg, var(--red-soft), rgba(255, 253, 248, 0.94));
+}
+
+.level-card h3,
+.challenge-card h3,
+.streak-card h3 {
   margin: 0 0 8px;
   font-size: clamp(1.25rem, 3vw, 1.8rem);
   line-height: 1.05;
 }
 
-.coins-card p {
+.level-card p,
+.challenge-card p,
+.streak-card p {
   color: var(--muted);
   font-size: clamp(0.92rem, 1.8vw, 1.05rem);
   font-weight: 750;
   line-height: 1.25;
 }
 
-.coin-total {
-  display: inline-flex;
-  width: fit-content;
-  margin-top: 14px;
-  border: 1px solid rgba(109, 74, 160, 0.25);
-  border-radius: 999px;
-  background: rgba(255, 253, 248, 0.82);
+.level-card strong,
+.streak-card strong {
   color: var(--violet);
-  padding: 8px 13px;
-  font-size: clamp(1rem, 2.1vw, 1.16rem);
+  font-size: clamp(1.55rem, 4vw, 2.45rem);
+  line-height: 1;
+}
+
+.challenge-heading {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  align-items: start;
+}
+
+.challenge-heading strong {
+  color: var(--green);
+  white-space: nowrap;
+}
+
+.progress-track {
+  height: 12px;
+  border-radius: 999px;
+  background: rgba(31, 38, 35, 0.12);
+  overflow: hidden;
+}
+
+.progress-track span {
+  width: 0%;
+  height: 100%;
+  display: block;
+  border-radius: inherit;
+  background: var(--violet);
+  transition: width 180ms ease;
+}
+
+.challenge-card .progress-track span {
+  background: var(--green);
+}
+
+.progress-note {
+  margin: 0;
 }
 
 .start-earning-button {
@@ -325,6 +375,7 @@ h1 {
   padding: 0 20px;
   font-size: clamp(1.08rem, 2.5vw, 1.35rem);
   font-weight: 900;
+  text-align: center;
 }
 
 .leaderboard-card {
@@ -914,7 +965,10 @@ select,
     gap: 10px;
   }
 
-  .coins-card {
+  .level-card,
+  .challenge-card,
+  .streak-card,
+  .leaderboard-card {
     min-height: auto;
     padding: 14px;
   }
@@ -1048,11 +1102,15 @@ select,
     font-size: clamp(1.8rem, 12vw, 2.7rem);
   }
 
-  .coins-card h3 {
+  .level-card h3,
+  .challenge-card h3,
+  .streak-card h3 {
     font-size: 1.18rem;
   }
 
-  .coins-card p {
+  .level-card p,
+  .challenge-card p,
+  .streak-card p {
     font-size: 0.88rem;
   }
 
