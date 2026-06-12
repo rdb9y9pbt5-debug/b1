@@ -257,7 +257,7 @@ h1 {
 
 .control-panel {
   display: grid;
-  grid-template-columns: 1fr 1fr minmax(92px, 0.45fr);
+  grid-template-columns: 1fr 1fr minmax(92px, 0.45fr) minmax(140px, 0.65fr);
   gap: 10px;
 }
 
@@ -584,8 +584,15 @@ select,
   gap: 10px;
 }
 
+.nav-buttons {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 10px;
+}
+
 .primary-button,
-.rating-buttons button {
+.rating-buttons button,
+.nav-buttons button {
   min-height: 62px;
   font-size: clamp(1.05rem, 2.4vw, 1.3rem);
 }
@@ -659,7 +666,7 @@ select,
   }
 
   .control-panel {
-    grid-template-columns: 1fr 1fr minmax(76px, 0.65fr);
+    grid-template-columns: 1fr 1fr;
   }
 
   .search-panel input {
@@ -705,6 +712,7 @@ select,
 
   .primary-button,
   .rating-buttons button,
+  .nav-buttons button,
   .article-quiz-options button,
   .article-rating-buttons button {
     min-height: 56px;
@@ -819,6 +827,15 @@ select,
     font-size: 0.92rem;
   }
 
+  .nav-buttons {
+    gap: 6px;
+  }
+
+  .nav-buttons button {
+    min-height: 44px;
+    font-size: 0.92rem;
+  }
+
   .article-quiz {
     gap: 8px;
   }
@@ -860,6 +877,7 @@ select,
 
   .primary-button,
   .rating-buttons button,
+  .nav-buttons button,
   .article-quiz-options button,
   .article-rating-buttons button {
     min-height: 48px;
