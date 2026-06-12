@@ -15,18 +15,19 @@ const DEFAULT_PROFILES = [
 
 const STANDARD_FILTERS = [
   ["all", "All words"],
-  ["nouns", "Nouns only"],
-  ["meaningOnly", "Meaning known, article unknown"],
-  ["unsure", "Unsure words only"],
-  ["dontKnow", "Don't Know words only"]
+  ["knownMeaning", "Known meaning"],
+  ["unsureMeaning", "Kind of known meaning"],
+  ["unknownMeaning", "Unknown meaning"],
+  ["unratedMeaning", "Unrated meaning"]
 ];
 
 const ARTICLE_FILTERS = [
-  ["allArticle", "All noun articles"],
-  ["knownArticles", "Known articles"],
-  ["kindOfArticles", "Kind of known articles"],
-  ["unknownArticles", "Unknown articles"],
-  ["unratedArticles", "Unrated articles"]
+  ["allArticle", "All nouns"],
+  ["knownArticles", "Known article"],
+  ["unsureArticles", "Kind of known article"],
+  ["unknownArticles", "Unknown article"],
+  ["unratedArticles", "Unrated article"],
+  ["articleGap", "Article gap"]
 ];
 
 const els = {
@@ -49,18 +50,15 @@ const els = {
   switchProfile: document.querySelector("#switchProfile"),
   lockApp: document.querySelector("#lockApp"),
   resetProgress: document.querySelector("#resetProgress"),
-  statTotalLabel: document.querySelector("#statTotalLabel"),
-  statKnowLabel: document.querySelector("#statKnowLabel"),
-  statUnsureLabel: document.querySelector("#statUnsureLabel"),
-  statMeaningOnlyLabel: document.querySelector("#statMeaningOnlyLabel"),
-  statDontKnowLabel: document.querySelector("#statDontKnowLabel"),
-  statCompletedLabel: document.querySelector("#statCompletedLabel"),
-  statTotal: document.querySelector("#statTotal"),
-  statKnow: document.querySelector("#statKnow"),
-  statUnsure: document.querySelector("#statUnsure"),
-  statMeaningOnly: document.querySelector("#statMeaningOnly"),
-  statDontKnow: document.querySelector("#statDontKnow"),
-  statCompleted: document.querySelector("#statCompleted"),
+  statMeaningKnown: document.querySelector("#statMeaningKnown"),
+  statMeaningUnsure: document.querySelector("#statMeaningUnsure"),
+  statMeaningUnknown: document.querySelector("#statMeaningUnknown"),
+  statMeaningUnrated: document.querySelector("#statMeaningUnrated"),
+  statArticleKnown: document.querySelector("#statArticleKnown"),
+  statArticleUnsure: document.querySelector("#statArticleUnsure"),
+  statArticleUnknown: document.querySelector("#statArticleUnknown"),
+  statArticleUnrated: document.querySelector("#statArticleUnrated"),
+  statArticleGap: document.querySelector("#statArticleGap"),
   cardCounter: document.querySelector("#cardCounter"),
   cardMode: document.querySelector("#cardMode"),
   promptLabel: document.querySelector("#promptLabel"),
@@ -78,7 +76,6 @@ const els = {
   previousCard: document.querySelector("#previousCard"),
   nextCard: document.querySelector("#nextCard"),
   showAnswer: document.querySelector("#showAnswer"),
-  meaningOnlyButton: document.querySelector("#meaningOnlyButton"),
   ratingButtons: document.querySelector("#ratingButtons")
 };
 
@@ -181,6 +178,8 @@ function loadProfileStore() {
       ...legacyArticleProgress,
       ...store.profiles.mineko.articleProgress
     };
+    store.profiles.mineko.progress = normalizeMeaningProgress(store.profiles.mineko.progress);
+    store.profiles.mineko.articleProgress = normalizeArticleProgress(store.profiles.mineko.articleProgress);
     if (hasLegacyData) store.currentProfile = store.currentProfile || "mineko";
     store.migratedLegacyProgress = true;
   }
@@ -207,8 +206,8 @@ function normalizeProfileData(data, profile) {
     name: data?.name || profile.name,
     emoji: data?.emoji || profile.emoji,
     decks: data?.decks || {},
-    progress: data?.progress || {},
-    articleProgress: data?.articleProgress || {},
+    progress: normalizeMeaningProgress(data?.progress || {}),
+    articleProgress: normalizeArticleProgress(data?.articleProgress || {}),
     settings: {
       mode: data?.settings?.mode || "de-en",
       filter: data?.settings?.filter || "all",
@@ -218,6 +217,44 @@ function normalizeProfileData(data, profile) {
     history: Array.isArray(data?.history) ? data.history : [],
     lastStudyDate: data?.lastStudyDate || ""
   };
+}
+
+function normalizeMeaningProgress(savedProgress) {
+  return Object.fromEntries(
+    Object.entries(savedProgress).map(([cardId, entry]) => [
+      cardId,
+      {
+        ...entry,
+        meaningStatus: normalizeMeaningStatus(entry.meaningStatus || entry.rating)
+      }
+    ])
+  );
+}
+
+function normalizeArticleProgress(savedProgress) {
+  return Object.fromEntries(
+    Object.entries(savedProgress).map(([cardId, entry]) => [
+      cardId,
+      {
+        ...entry,
+        articleStatus: normalizeArticleStatus(entry.articleStatus || entry.rating)
+      }
+    ])
+  );
+}
+
+function normalizeMeaningStatus(value) {
+  if (value === "know" || value === "known" || value === "meaningOnly") return "known";
+  if (value === "unsure") return "unsure";
+  if (value === "dontKnow" || value === "unknown") return "unknown";
+  return "unrated";
+}
+
+function normalizeArticleStatus(value) {
+  if (value === "known") return "known";
+  if (value === "kindOf" || value === "unsure") return "unsure";
+  if (value === "unknown") return "unknown";
+  return "unrated";
 }
 
 function readStorageObject(key) {
@@ -309,9 +346,10 @@ function renderProfileCards() {
 function getProfileDashboardStats(profile) {
   const counts = Object.values(profile.progress || {}).reduce(
     (total, entry) => {
-      if (entry.rating === "know") total.known += 1;
-      if (entry.rating === "unsure") total.unsure += 1;
-      if (entry.rating === "dontKnow") total.unknown += 1;
+      const status = normalizeMeaningStatus(entry.meaningStatus || entry.rating);
+      if (status === "known") total.known += 1;
+      if (status === "unsure") total.unsure += 1;
+      if (status === "unknown") total.unknown += 1;
       return total;
     },
     { known: 0, unsure: 0, unknown: 0 }
@@ -504,21 +542,21 @@ function applyModeAndFilter() {
   const order = els.orderSelect.value;
 
   const filteredCards = cards.filter((card) => {
-    const rating = progress[card.id]?.rating;
-    const articleRating = articleProgress[card.id]?.rating;
-    if (mode === "article-quiz") {
+    const meaningStatus = getMeaningStatus(card);
+    const articleStatus = getArticleStatus(card);
+    if (mode === "article-quiz" || mode === "article") {
       if (!card.isNoun) return false;
-      if (filter === "knownArticles" && articleRating !== "known") return false;
-      if (filter === "kindOfArticles" && articleRating !== "kindOf") return false;
-      if (filter === "unknownArticles" && articleRating !== "unknown") return false;
-      if (filter === "unratedArticles" && articleRating) return false;
+      if (filter === "knownArticles" && articleStatus !== "known") return false;
+      if (filter === "unsureArticles" && articleStatus !== "unsure") return false;
+      if (filter === "unknownArticles" && articleStatus !== "unknown") return false;
+      if (filter === "unratedArticles" && articleStatus !== "unrated") return false;
+      if (filter === "articleGap" && !(meaningStatus === "known" && articleStatus !== "known")) return false;
       return true;
     }
-    if (mode === "article" && !card.isNoun) return false;
-    if (filter === "nouns" && !card.isNoun) return false;
-    if (filter === "meaningOnly" && rating !== "meaningOnly") return false;
-    if (filter === "unsure" && rating !== "unsure") return false;
-    if (filter === "dontKnow" && rating !== "dontKnow") return false;
+    if (filter === "knownMeaning" && meaningStatus !== "known") return false;
+    if (filter === "unsureMeaning" && meaningStatus !== "unsure") return false;
+    if (filter === "unknownMeaning" && meaningStatus !== "unknown") return false;
+    if (filter === "unratedMeaning" && meaningStatus !== "unrated") return false;
     return true;
   });
 
@@ -644,8 +682,8 @@ function renderCard() {
   els.answerPanel.classList.toggle("hidden", mode === "article-quiz" || !card || !answerShown);
   els.articleGuess.classList.toggle("hidden", mode === "article-quiz" || !card || mode !== "article" || answerShown);
   els.articleQuiz.classList.toggle("hidden", mode !== "article-quiz" || !card);
-  els.meaningOnlyButton.classList.toggle("hidden", !card?.isNoun);
-  els.ratingButtons.classList.toggle("noun-card", Boolean(card?.isNoun));
+  els.ratingButtons.classList.toggle("article-rating-mode", mode === "article");
+  updateRatingButtonLabels(mode);
 
   if (!card) {
     els.promptLabel.textContent = "No cards";
@@ -692,11 +730,15 @@ function moveCard(direction) {
 
 function rateCard(rating) {
   const card = visibleCards[currentIndex];
+  if (els.modeSelect.value === "article") {
+    rateArticleCard(rating);
+    return;
+  }
   progress[card.id] = {
-    rating,
+    meaningStatus: normalizeMeaningStatus(rating),
     updatedAt: new Date().toISOString()
   };
-  recordStudyHistory("flashcard", card, rating);
+  recordStudyHistory("flashcard", card, normalizeMeaningStatus(rating));
   saveProgress();
 
   if (visibleCards.length > 1) {
@@ -707,37 +749,33 @@ function rateCard(rating) {
 }
 
 function updateStats() {
-  if (els.modeSelect.value === "article-quiz") {
-    updateArticleStats();
-    return;
-  }
-
-  els.statTotalLabel.textContent = "Total";
-  els.statKnowLabel.textContent = "Know";
-  els.statUnsureLabel.textContent = "Unsure";
-  els.statMeaningOnlyLabel.textContent = "Article Gap";
-  els.statDontKnowLabel.textContent = "Don't Know";
-  els.statCompletedLabel.textContent = "Done";
-
-  const counts = cards.reduce(
+  const meaning = cards.reduce(
     (total, card) => {
-      const rating = progress[card.id]?.rating;
-      if (rating === "know") total.know += 1;
-      if (rating === "unsure") total.unsure += 1;
-      if (rating === "meaningOnly") total.meaningOnly += 1;
-      if (rating === "dontKnow") total.dontKnow += 1;
+      total[getMeaningStatus(card)] += 1;
       return total;
     },
-    { know: 0, unsure: 0, meaningOnly: 0, dontKnow: 0 }
+    { known: 0, unsure: 0, unknown: 0, unrated: 0 }
   );
 
-  const completed = counts.know + counts.unsure + counts.meaningOnly + counts.dontKnow;
-  els.statTotal.textContent = cards.length;
-  els.statKnow.textContent = counts.know;
-  els.statUnsure.textContent = counts.unsure;
-  els.statMeaningOnly.textContent = counts.meaningOnly;
-  els.statDontKnow.textContent = counts.dontKnow;
-  els.statCompleted.textContent = cards.length ? `${Math.round((completed / cards.length) * 100)}%` : "0%";
+  const articles = cards.reduce(
+    (total, card) => {
+      if (!card.isNoun) return total;
+      total[getArticleStatus(card)] += 1;
+      if (getMeaningStatus(card) === "known" && getArticleStatus(card) !== "known") total.gap += 1;
+      return total;
+    },
+    { known: 0, unsure: 0, unknown: 0, unrated: 0, gap: 0 }
+  );
+
+  els.statMeaningKnown.textContent = meaning.known;
+  els.statMeaningUnsure.textContent = meaning.unsure;
+  els.statMeaningUnknown.textContent = meaning.unknown;
+  els.statMeaningUnrated.textContent = meaning.unrated;
+  els.statArticleKnown.textContent = articles.known;
+  els.statArticleUnsure.textContent = articles.unsure;
+  els.statArticleUnknown.textContent = articles.unknown;
+  els.statArticleUnrated.textContent = articles.unrated;
+  els.statArticleGap.textContent = articles.gap;
 }
 
 function renderArticleQuiz(card) {
@@ -745,9 +783,17 @@ function renderArticleQuiz(card) {
 
   const fullAnswer = `${card.article} ${card.word}`;
   const isCorrect = selectedQuizArticle === card.article;
-  els.articleQuizResult.textContent = isCorrect
-    ? `Correct: ${fullAnswer}`
-    : `Not quite. Correct answer: ${fullAnswer}`;
+  els.articleQuizResult.innerHTML = isCorrect
+    ? `
+      <span class="quiz-result-label">Correct</span>
+      <span class="quiz-result-answer">${escapeHtml(fullAnswer)}</span>
+      <span class="quiz-result-meaning">${escapeHtml(card.english)}</span>
+    `
+    : `
+      <span class="quiz-result-label">Wrong</span>
+      <span class="quiz-result-answer">Correct answer: ${escapeHtml(fullAnswer)}</span>
+      <span class="quiz-result-meaning">${escapeHtml(card.english)}</span>
+    `;
   els.articleQuizResult.classList.toggle("hidden", !articleQuizAnswered);
   els.articleQuizResult.classList.toggle("success", articleQuizAnswered && isCorrect);
   els.articleQuizResult.classList.toggle("error", articleQuizAnswered && !isCorrect);
@@ -771,10 +817,10 @@ function answerArticleQuiz(article) {
 function rateArticleCard(rating) {
   const card = visibleCards[currentIndex];
   articleProgress[card.id] = {
-    rating,
+    articleStatus: normalizeArticleStatus(rating),
     updatedAt: new Date().toISOString()
   };
-  recordStudyHistory("article-quiz", card, rating);
+  recordStudyHistory(els.modeSelect.value === "article" ? "article-practice" : "article-quiz", card, normalizeArticleStatus(rating));
   saveArticleProgress();
 
   if (visibleCards.length > 1) {
@@ -784,33 +830,13 @@ function rateArticleCard(rating) {
   applyModeAndFilter();
 }
 
-function updateArticleStats() {
-  const reviewLists = getArticleReviewLists();
-  const totalNouns = cards.filter((card) => card.isNoun).length;
-  const rated = reviewLists.known.length + reviewLists.kindOf.length + reviewLists.unknown.length;
-
-  els.statTotalLabel.textContent = "Noun Cards";
-  els.statKnowLabel.textContent = "Known";
-  els.statUnsureLabel.textContent = "Kind Of";
-  els.statMeaningOnlyLabel.textContent = "Unknown";
-  els.statDontKnowLabel.textContent = "Unrated";
-  els.statCompletedLabel.textContent = "Done";
-
-  els.statTotal.textContent = totalNouns;
-  els.statKnow.textContent = reviewLists.known.length;
-  els.statUnsure.textContent = reviewLists.kindOf.length;
-  els.statMeaningOnly.textContent = reviewLists.unknown.length;
-  els.statDontKnow.textContent = reviewLists.unrated.length;
-  els.statCompleted.textContent = totalNouns ? `${Math.round((rated / totalNouns) * 100)}%` : "0%";
-}
-
 function getArticleReviewLists() {
   return cards.reduce(
     (lists, card) => {
       if (!card.isNoun) return lists;
-      const rating = articleProgress[card.id]?.rating;
+      const rating = getArticleStatus(card);
       if (rating === "known") lists.known.push(card);
-      else if (rating === "kindOf") lists.kindOf.push(card);
+      else if (rating === "unsure") lists.kindOf.push(card);
       else if (rating === "unknown") lists.unknown.push(card);
       else lists.unrated.push(card);
       return lists;
@@ -823,6 +849,36 @@ function buildExampleText(card) {
   if (els.modeSelect.value !== "article" || !selectedArticle) return card.example || "-";
   const marker = selectedArticle === card.article ? "Correct" : `Your guess: ${selectedArticle}`;
   return `${marker}. ${card.example || ""}`.trim();
+}
+
+function getMeaningStatus(card) {
+  const entry = progress[card.id];
+  return normalizeMeaningStatus(entry?.meaningStatus || entry?.rating);
+}
+
+function getArticleStatus(card) {
+  const entry = articleProgress[card.id];
+  return normalizeArticleStatus(entry?.articleStatus || entry?.rating);
+}
+
+function updateRatingButtonLabels(mode) {
+  const labels = mode === "article"
+    ? [
+      ["known", "I know the article"],
+      ["unsure", "I kind of know the article"],
+      ["unknown", "I don’t know the article"]
+    ]
+    : [
+      ["known", "I know the meaning"],
+      ["unsure", "I kind of know the meaning"],
+      ["unknown", "I don’t know the meaning"]
+    ];
+
+  els.ratingButtons.querySelectorAll("button[data-rating]").forEach((button, index) => {
+    const [value, label] = labels[index];
+    button.dataset.rating = value;
+    button.textContent = label;
+  });
 }
 
 function getModeText(mode) {
@@ -885,7 +941,7 @@ function getSortKey(word) {
 }
 
 function updateFilterOptions() {
-  const isArticleQuiz = els.modeSelect.value === "article-quiz";
+  const isArticleQuiz = els.modeSelect.value === "article-quiz" || els.modeSelect.value === "article";
   const options = isArticleQuiz ? ARTICLE_FILTERS : STANDARD_FILTERS;
   const allowedValues = options.map(([value]) => value);
   const currentValue = els.filterSelect.value;
@@ -903,7 +959,7 @@ function updateFilterOptions() {
 }
 
 function getValidFilterValue(value) {
-  const options = els.modeSelect.value === "article-quiz" ? ARTICLE_FILTERS : STANDARD_FILTERS;
+  const options = els.modeSelect.value === "article-quiz" || els.modeSelect.value === "article" ? ARTICLE_FILTERS : STANDARD_FILTERS;
   const allowedValues = options.map(([optionValue]) => optionValue);
   return allowedValues.includes(value) ? value : options[0][0];
 }
