@@ -42,6 +42,8 @@ const els = {
   modeSelect: document.querySelector("#modeSelect"),
   filterSelect: document.querySelector("#filterSelect"),
   startSelect: document.querySelector("#startSelect"),
+  wordSearchInput: document.querySelector("#wordSearchInput"),
+  searchResults: document.querySelector("#searchResults"),
   csvInput: document.querySelector("#csvInput"),
   switchProfile: document.querySelector("#switchProfile"),
   lockApp: document.querySelector("#lockApp"),
@@ -88,6 +90,7 @@ let progress = {};
 let articleProgress = {};
 let profileStore = null;
 let currentProfileId = "";
+let searchResults = [];
 
 document.addEventListener("DOMContentLoaded", init);
 
@@ -348,6 +351,14 @@ function bindEvents() {
     applyModeAndFilter();
   });
 
+  els.wordSearchInput.addEventListener("input", updateSearchResults);
+
+  els.searchResults.addEventListener("click", (event) => {
+    const button = event.target.closest("button[data-card-id]");
+    if (!button) return;
+    openSearchResult(button.dataset.cardId);
+  });
+
   els.showAnswer.addEventListener("click", revealAnswer);
 
   els.ratingButtons.addEventListener("click", (event) => {
@@ -499,6 +510,101 @@ function applyModeAndFilter() {
   selectedQuizArticle = "";
   updateStats();
   renderCard();
+}
+
+function updateSearchResults() {
+  const query = els.wordSearchInput.value.trim();
+  if (!query) {
+    searchResults = [];
+    els.searchResults.classList.add("hidden");
+    els.searchResults.replaceChildren();
+    return;
+  }
+
+  const normalizedQuery = normalizeSearchValue(query);
+  searchResults = cards
+    .filter((card) => normalizeSearchValue(card.word).includes(normalizedQuery))
+    .sort((first, second) => getSortKey(first.word).localeCompare(getSortKey(second.word), "de"))
+    .slice(0, 40);
+
+  renderSearchResults(query);
+}
+
+function renderSearchResults(query) {
+  els.searchResults.classList.remove("hidden");
+  if (!searchResults.length) {
+    els.searchResults.replaceChildren(createSearchEmptyMessage(query));
+    return;
+  }
+
+  els.searchResults.replaceChildren(
+    ...searchResults.map((card) => {
+      const button = document.createElement("button");
+      button.type = "button";
+      button.className = "search-result";
+      button.dataset.cardId = card.id;
+      button.innerHTML = `
+        <span class="search-result-word">${formatGermanWord(card)}</span>
+        <span class="search-result-english">${escapeHtml(card.english)}</span>
+        <span class="search-result-example">${escapeHtml(card.example || "")}</span>
+      `;
+      return button;
+    })
+  );
+}
+
+function createSearchEmptyMessage(query) {
+  const message = document.createElement("p");
+  message.className = "search-empty";
+  message.textContent = `No German words found for "${query}".`;
+  return message;
+}
+
+function openSearchResult(cardId) {
+  const card = cards.find((item) => item.id === cardId);
+  if (!card) return;
+
+  els.wordSearchInput.value = "";
+  searchResults = [];
+  els.searchResults.classList.add("hidden");
+  els.searchResults.replaceChildren();
+
+  els.modeSelect.value = "de-en";
+  updateFilterOptions();
+  els.filterSelect.value = "all";
+  els.startSelect.value = "all";
+  applyModeAndFilter();
+
+  const index = visibleCards.findIndex((item) => item.id === card.id);
+  if (index !== -1) {
+    currentIndex = index;
+    answerShown = false;
+    selectedArticle = "";
+    articleQuizAnswered = false;
+    selectedQuizArticle = "";
+    renderCard();
+  }
+}
+
+function normalizeSearchValue(value) {
+  return value
+    .toLowerCase()
+    .normalize("NFKD")
+    .replace(/[\u0300-\u036f]/g, "");
+}
+
+function formatGermanWord(card) {
+  const word = escapeHtml(card.word);
+  return card.article ? `${escapeHtml(card.article)} ${word}` : word;
+}
+
+function escapeHtml(value) {
+  return String(value)
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;")
+    .replace(/'/g, "&#039;");
 }
 
 function renderCard() {
