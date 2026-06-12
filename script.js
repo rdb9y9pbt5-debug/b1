@@ -99,8 +99,12 @@ const els = {
   csvInput: document.querySelector("#csvInput"),
   homeButton: document.querySelector("#homeButton"),
   switchProfile: document.querySelector("#switchProfile"),
+  settingsToggle: document.querySelector("#settingsToggle"),
+  settingsPanel: document.querySelector("#settingsPanel"),
   lockApp: document.querySelector("#lockApp"),
   resetProgress: document.querySelector("#resetProgress"),
+  restartVocabularyPosition: document.querySelector("#restartVocabularyPosition"),
+  restartArticlePosition: document.querySelector("#restartArticlePosition"),
   statWordsLearned: document.querySelector("#statWordsLearned"),
   statWordsTotal: document.querySelector("#statWordsTotal"),
   statArticlesLearned: document.querySelector("#statArticlesLearned"),
@@ -611,13 +615,13 @@ function getDisplayStreak(profile) {
 
 function handleDashboardAction(action) {
   if (action === "restart-vocabulary") {
-    resetSavedPosition("vocabulary");
+    if (!confirmAndResetSavedPosition("vocabulary")) return;
     openStudyRoute({ mode: "de-en", filter: "all", resume: false });
     return;
   }
 
   if (action === "restart-articles") {
-    resetSavedPosition("article");
+    if (!confirmAndResetSavedPosition("article")) return;
     openStudyRoute({ mode: "article", filter: "allArticle", resume: false });
     return;
   }
@@ -689,6 +693,14 @@ function resetSavedPosition(key = getPositionKey()) {
   profile.positions[key] = 0;
   saveProfileStore();
   if (currentView === "dashboard") renderDashboard();
+}
+
+function confirmAndResetSavedPosition(key) {
+  const profile = getCurrentProfile();
+  const label = key === "article" ? "article" : "vocabulary";
+  if (!window.confirm(`Restart ${profile.name}'s ${label} position from the beginning? This will not erase progress or coins.`)) return false;
+  resetSavedPosition(key);
+  return true;
 }
 
 function renderProfileCards() {
@@ -809,6 +821,7 @@ function bindEvents() {
 
   els.homeButton.addEventListener("click", () => {
     saveCurrentPosition();
+    closeSettingsMenu();
     showDashboard();
   });
 
@@ -832,15 +845,29 @@ function bindEvents() {
 
   els.switchProfile.addEventListener("click", () => {
     saveCurrentPosition();
+    closeSettingsMenu();
     showProfileScreen();
   });
 
+  els.settingsToggle.addEventListener("click", () => {
+    const isOpen = !els.settingsPanel.classList.contains("hidden");
+    els.settingsPanel.classList.toggle("hidden", isOpen);
+    els.settingsToggle.setAttribute("aria-expanded", String(!isOpen));
+  });
+
+  document.addEventListener("click", (event) => {
+    if (event.target.closest(".settings-menu")) return;
+    closeSettingsMenu();
+  });
+
   els.lockApp.addEventListener("click", () => {
+    closeSettingsMenu();
     localStorage.removeItem(UNLOCK_STORAGE_KEY);
     window.location.reload();
   });
 
   els.resetProgress.addEventListener("click", () => {
+    closeSettingsMenu();
     const profile = getCurrentProfile();
     if (!window.confirm(`Reset saved progress for ${profile.name}?`)) return;
     progress = {};
@@ -852,6 +879,16 @@ function bindEvents() {
     saveProfileStore();
     currentIndex = 0;
     applyModeAndFilter();
+  });
+
+  els.restartVocabularyPosition.addEventListener("click", () => {
+    closeSettingsMenu();
+    confirmAndResetSavedPosition("vocabulary");
+  });
+
+  els.restartArticlePosition.addEventListener("click", () => {
+    closeSettingsMenu();
+    confirmAndResetSavedPosition("article");
   });
 
   if (els.csvInput) {
@@ -870,6 +907,11 @@ function bindEvents() {
   els.levelCelebrationClose.addEventListener("click", () => {
     els.levelCelebration.classList.add("hidden");
   });
+}
+
+function closeSettingsMenu() {
+  els.settingsPanel.classList.add("hidden");
+  els.settingsToggle.setAttribute("aria-expanded", "false");
 }
 
 function parseCsv(text) {

@@ -8,7 +8,7 @@
     <meta name="apple-mobile-web-app-title" content="B1 Karten">
     <meta name="apple-mobile-web-app-status-bar-style" content="default">
     <title>Goethe B1 Flashcards</title>
-    <link rel="stylesheet" href="style.css?v=27">
+    <link rel="stylesheet" href="style.css?v=28">
   </head>
   <body>
     <section class="lock-screen" id="lockScreen" aria-label="Password required">
@@ -49,8 +49,15 @@
         <div class="top-actions">
           <button class="ghost-button" id="homeButton" type="button">Home</button>
           <button class="ghost-button" id="switchProfile" type="button">Switch Profile</button>
-          <button class="ghost-button" id="lockApp" type="button">Lock</button>
-          <button class="ghost-button" id="resetProgress" type="button">Reset</button>
+          <div class="settings-menu">
+            <button class="icon-button" id="settingsToggle" type="button" aria-expanded="false" aria-controls="settingsPanel" aria-label="Settings">⚙️</button>
+            <div class="settings-panel hidden" id="settingsPanel">
+              <button type="button" id="lockApp">Lock App</button>
+              <button type="button" id="resetProgress">Reset Progress</button>
+              <button type="button" id="restartVocabularyPosition">Restart Vocabulary Position</button>
+              <button type="button" id="restartArticlePosition">Restart Article Position</button>
+            </div>
+          </div>
         </div>
       </header>
 
@@ -92,17 +99,11 @@
                 <strong>📚 Vocabulary</strong>
                 <span>Card <span id="resumeVocabularyPosition">1</span> of <span id="resumeVocabularyTotal">0</span></span>
               </div>
-              <div class="resume-actions">
-                <button class="small-button" type="button" data-dashboard-action="restart-vocabulary">Restart Vocabulary from Beginning</button>
-              </div>
             </article>
             <article class="resume-item">
               <div>
                 <strong>🏷 Articles</strong>
                 <span>Card <span id="resumeArticlePosition">1</span> of <span id="resumeArticleTotal">0</span></span>
-              </div>
-              <div class="resume-actions">
-                <button class="small-button" type="button" data-dashboard-action="restart-articles">Restart Articles from Beginning</button>
               </div>
             </article>
           </div>
@@ -344,6 +345,6 @@
       </footer>
     </main>
 
-    <script src="script.js?v=27"></script>
+    <script src="script.js?v=28"></script>
   </body>
 </html>
