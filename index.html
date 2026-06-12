@@ -8,7 +8,7 @@
     <meta name="apple-mobile-web-app-title" content="B1 Karten">
     <meta name="apple-mobile-web-app-status-bar-style" content="default">
     <title>Goethe B1 Flashcards</title>
-    <link rel="stylesheet" href="style.css?v=9">
+    <link rel="stylesheet" href="style.css?v=10">
   </head>
   <body>
     <section class="lock-screen" id="lockScreen" aria-label="Password required">
@@ -67,10 +67,10 @@
           <span>Filter</span>
           <select id="filterSelect">
             <option value="all">All words</option>
-            <option value="nouns">Nouns only</option>
-            <option value="meaningOnly">Meaning known, article unknown</option>
-            <option value="unsure">Unsure words only</option>
-            <option value="dontKnow">Don't Know words only</option>
+            <option value="knownMeaning">Known meaning</option>
+            <option value="unsureMeaning">Kind of known meaning</option>
+            <option value="unknownMeaning">Unknown meaning</option>
+            <option value="unratedMeaning">Unrated meaning</option>
           </select>
         </label>
         <label>
@@ -124,28 +124,40 @@
 
       <section class="stats-grid" aria-label="Progress statistics">
         <article>
-          <span id="statTotalLabel">Total</span>
-          <strong id="statTotal">0</strong>
+          <span>Meaning Known</span>
+          <strong id="statMeaningKnown">0</strong>
         </article>
         <article>
-          <span id="statKnowLabel">Know</span>
-          <strong id="statKnow">0</strong>
+          <span>Meaning Kind Of</span>
+          <strong id="statMeaningUnsure">0</strong>
         </article>
         <article>
-          <span id="statUnsureLabel">Unsure</span>
-          <strong id="statUnsure">0</strong>
+          <span>Meaning Unknown</span>
+          <strong id="statMeaningUnknown">0</strong>
         </article>
         <article>
-          <span id="statMeaningOnlyLabel">Article Gap</span>
-          <strong id="statMeaningOnly">0</strong>
+          <span>Meaning Unrated</span>
+          <strong id="statMeaningUnrated">0</strong>
         </article>
         <article>
-          <span id="statDontKnowLabel">Don't Know</span>
-          <strong id="statDontKnow">0</strong>
+          <span>Article Known</span>
+          <strong id="statArticleKnown">0</strong>
         </article>
         <article>
-          <span id="statCompletedLabel">Done</span>
-          <strong id="statCompleted">0%</strong>
+          <span>Article Kind Of</span>
+          <strong id="statArticleUnsure">0</strong>
+        </article>
+        <article>
+          <span>Article Unknown</span>
+          <strong id="statArticleUnknown">0</strong>
+        </article>
+        <article>
+          <span>Article Unrated</span>
+          <strong id="statArticleUnrated">0</strong>
+        </article>
+        <article>
+          <span>Article Gap</span>
+          <strong id="statArticleGap">0</strong>
         </article>
       </section>
 
@@ -175,9 +187,9 @@
             </div>
             <p class="article-quiz-result hidden" id="articleQuizResult"></p>
             <div class="article-rating-buttons hidden" id="articleRatingButtons">
-              <button class="know" type="button" data-article-rating="known">I know this</button>
-              <button class="kind-of" type="button" data-article-rating="kindOf">I kind of know this</button>
-              <button class="dont-know" type="button" data-article-rating="unknown">I don’t know this</button>
+              <button class="know" type="button" data-article-rating="known">I know the article</button>
+              <button class="kind-of" type="button" data-article-rating="unsure">I kind of know the article</button>
+              <button class="dont-know" type="button" data-article-rating="unknown">I don’t know the article</button>
             </div>
           </div>
 
@@ -212,14 +224,13 @@
         </div>
         <button class="primary-button" id="showAnswer" type="button">Show Answer</button>
         <div class="rating-buttons hidden" id="ratingButtons">
-          <button class="know" type="button" data-rating="know">Know</button>
-          <button class="meaning-only" id="meaningOnlyButton" type="button" data-rating="meaningOnly">Meaning Only</button>
-          <button class="unsure" type="button" data-rating="unsure">Unsure</button>
-          <button class="dont-know" type="button" data-rating="dontKnow">Don't Know</button>
+          <button class="know" type="button" data-rating="known">I know the meaning</button>
+          <button class="unsure" type="button" data-rating="unsure">I kind of know the meaning</button>
+          <button class="dont-know" type="button" data-rating="unknown">I don’t know the meaning</button>
         </div>
       </footer>
     </main>
 
-    <script src="script.js?v=9"></script>
+    <script src="script.js?v=10"></script>
   </body>
 </html>
