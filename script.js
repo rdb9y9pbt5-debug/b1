@@ -426,11 +426,8 @@ function bindEvents() {
 
   els.articleGuess.addEventListener("click", (event) => {
     const button = event.target.closest("button[data-article]");
-    if (!button) return;
-    selectedArticle = button.dataset.article;
-    els.articleGuess.querySelectorAll("button").forEach((item) => {
-      item.classList.toggle("selected", item === button);
-    });
+    if (!button || !visibleCards[currentIndex] || articleQuizAnswered) return;
+    answerArticleQuiz(button.dataset.article);
   });
 
   els.articleQuizOptions.addEventListener("click", (event) => {
@@ -670,16 +667,17 @@ function renderCard() {
   els.previousCard.disabled = visibleCards.length < 2;
   els.nextCard.disabled = visibleCards.length < 2;
   els.showAnswer.disabled = !card;
-  els.showAnswer.classList.toggle("hidden", mode === "article-quiz" || !card || answerShown);
-  els.ratingButtons.classList.toggle("hidden", mode === "article-quiz" || !card || !answerShown);
-  els.answerPanel.classList.toggle("hidden", mode === "article-quiz" || !card || !answerShown);
-  els.articleGuess.classList.toggle("hidden", mode === "article-quiz" || !card || mode !== "article" || answerShown);
-  els.articleQuiz.classList.toggle("hidden", mode !== "article-quiz" || !card);
+  els.showAnswer.classList.toggle("hidden", mode === "article-quiz" || mode === "article" || !card || answerShown);
+  els.ratingButtons.classList.toggle("hidden", mode === "article-quiz" || mode === "article" || !card || !answerShown);
+  els.answerPanel.classList.toggle("hidden", mode === "article-quiz" || mode === "article" || !card || !answerShown);
+  els.articleGuess.classList.toggle("hidden", mode === "article-quiz" || !card || mode !== "article" || articleQuizAnswered);
+  els.articleQuiz.classList.toggle("hidden", mode !== "article-quiz" || !card || articleQuizAnswered);
   els.ratingButtons.classList.toggle("article-rating-mode", mode === "article");
   updateRatingButtonLabels(mode);
 
   if (!card) {
     els.promptLabel.textContent = "No cards";
+    els.articleQuizResult.classList.add("hidden");
     els.questionText.textContent = "Nothing to study";
     return;
   }
@@ -701,8 +699,7 @@ function renderCard() {
   els.answerArticle.textContent = card.article || "none";
   els.answerMeaning.textContent = mode === "en-de" ? `${card.article ? `${card.article} ` : ""}${card.word}` : card.english;
   els.answerExample.textContent = buildExampleText(card);
-  els.articleGuess.querySelectorAll("button").forEach((button) => button.classList.remove("selected"));
-  renderArticleQuiz(card);
+  renderArticleResult(card);
 }
 
 function revealAnswer() {
@@ -775,8 +772,12 @@ function updateStats() {
   els.statWordsTotal.textContent = cards.length;
 }
 
-function renderArticleQuiz(card) {
-  if (els.modeSelect.value !== "article-quiz" || !card) return;
+function renderArticleResult(card) {
+  const mode = els.modeSelect.value;
+  if (!["article", "article-quiz"].includes(mode) || !card) {
+    els.articleQuizResult.classList.add("hidden");
+    return;
+  }
 
   const fullAnswer = `${card.article} ${card.word}`;
   const isCorrect = selectedQuizArticle === card.article;
@@ -794,6 +795,15 @@ function renderArticleQuiz(card) {
   els.articleQuizResult.classList.toggle("hidden", !articleQuizAnswered);
   els.articleQuizResult.classList.toggle("success", articleQuizAnswered && isCorrect);
   els.articleQuizResult.classList.toggle("error", articleQuizAnswered && !isCorrect);
+
+  els.articleGuess.querySelectorAll("button").forEach((button) => {
+    const article = button.dataset.article;
+    button.disabled = articleQuizAnswered;
+    button.classList.toggle("selected", selectedQuizArticle === article);
+    button.classList.toggle("correct", articleQuizAnswered && article === card.article);
+    button.classList.toggle("incorrect", articleQuizAnswered && selectedQuizArticle === article && article !== card.article);
+  });
+
   els.articleQuizOptions.querySelectorAll("button").forEach((button) => {
     const article = button.dataset.quizArticle;
     button.disabled = articleQuizAnswered;
@@ -809,6 +819,11 @@ function answerArticleQuiz(article) {
   selectedQuizArticle = article;
   articleQuizAnswered = true;
   const status = article === card.article ? "known" : "unknown";
+  console.log("Article button clicked", {
+    selectedArticle: article,
+    correctArticle: card.article,
+    isCorrect: status === "known"
+  });
   articleProgress[card.id] = {
     articleStatus: status,
     updatedAt: new Date().toISOString()
