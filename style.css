@@ -285,6 +285,7 @@ h1 {
 }
 
 .level-card,
+.earn-coins-card,
 .challenge-card,
 .streak-card {
   min-height: 120px;
@@ -300,6 +301,12 @@ h1 {
   background: linear-gradient(135deg, var(--violet-soft), rgba(255, 253, 248, 0.94));
 }
 
+.earn-coins-card {
+  background: linear-gradient(135deg, var(--amber-soft), rgba(255, 253, 248, 0.94));
+  grid-template-columns: minmax(0, 1fr) minmax(160px, 0.28fr);
+  align-items: center;
+}
+
 .challenge-card {
   background: linear-gradient(135deg, var(--green-soft), rgba(255, 253, 248, 0.94));
 }
@@ -309,6 +316,7 @@ h1 {
 }
 
 .level-card h3,
+.earn-coins-card h3,
 .challenge-card h3,
 .streak-card h3 {
   margin: 0 0 8px;
@@ -317,6 +325,7 @@ h1 {
 }
 
 .level-card p,
+.earn-coins-card p,
 .challenge-card p,
 .streak-card p {
   color: var(--muted);
@@ -966,6 +975,7 @@ select,
   }
 
   .level-card,
+  .earn-coins-card,
   .challenge-card,
   .streak-card,
   .leaderboard-card {
@@ -975,6 +985,10 @@ select,
 
   .start-earning-button {
     min-height: 58px;
+  }
+
+  .earn-coins-card {
+    grid-template-columns: 1fr;
   }
 
   .dashboard-progress {
@@ -1103,12 +1117,14 @@ select,
   }
 
   .level-card h3,
+  .earn-coins-card h3,
   .challenge-card h3,
   .streak-card h3 {
     font-size: 1.18rem;
   }
 
   .level-card p,
+  .earn-coins-card p,
   .challenge-card p,
   .streak-card p {
     font-size: 0.88rem;
