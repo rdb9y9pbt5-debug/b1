@@ -50,6 +50,9 @@ const els = {
   switchProfile: document.querySelector("#switchProfile"),
   lockApp: document.querySelector("#lockApp"),
   resetProgress: document.querySelector("#resetProgress"),
+  statWordsLearned: document.querySelector("#statWordsLearned"),
+  statWordsTotal: document.querySelector("#statWordsTotal"),
+  statArticleGapSummary: document.querySelector("#statArticleGapSummary"),
   statMeaningKnown: document.querySelector("#statMeaningKnown"),
   statMeaningUnsure: document.querySelector("#statMeaningUnsure"),
   statMeaningUnknown: document.querySelector("#statMeaningUnknown"),
@@ -62,9 +65,6 @@ const els = {
   cardCounter: document.querySelector("#cardCounter"),
   cardMode: document.querySelector("#cardMode"),
   promptLabel: document.querySelector("#promptLabel"),
-  masterySummary: document.querySelector("#masterySummary"),
-  wordsLearnedBadge: document.querySelector("#wordsLearnedBadge"),
-  articleGapBadge: document.querySelector("#articleGapBadge"),
   questionText: document.querySelector("#questionText"),
   articleGuess: document.querySelector("#articleGuess"),
   articleQuiz: document.querySelector("#articleQuiz"),
@@ -690,12 +690,9 @@ function renderCard() {
 
   if (!card) {
     els.promptLabel.textContent = "No cards";
-    els.masterySummary.classList.add("hidden");
     els.questionText.textContent = "Nothing to study";
     return;
   }
-
-  renderMasterySummary(mode);
 
   if (mode === "en-de") {
     els.promptLabel.textContent = "English";
@@ -782,6 +779,9 @@ function updateStats() {
   els.statArticleUnknown.textContent = articles.unknown;
   els.statArticleUnrated.textContent = articles.unrated;
   els.statArticleGap.textContent = articles.gap;
+  els.statArticleGapSummary.textContent = articles.gap;
+  els.statWordsLearned.textContent = getWordsLearnedCount();
+  els.statWordsTotal.textContent = cards.length;
 }
 
 function renderArticleQuiz(card) {
@@ -867,24 +867,12 @@ function getArticleStatus(card) {
   return normalizeArticleStatus(entry?.articleStatus || entry?.rating);
 }
 
-function renderMasterySummary(mode) {
-  const summary = getMasterySummary();
-  els.wordsLearnedBadge.innerHTML = `Words learned: ${summary.wordsLearned} <small>/ ${summary.total}</small>`;
-  els.articleGapBadge.textContent = `Need to learn articles: ${summary.articleGap}`;
-  els.masterySummary.classList.toggle("hidden", mode === "article-quiz");
-}
-
-function getMasterySummary() {
-  return cards.reduce(
-    (summary, card) => {
-      const meaningKnown = getMeaningStatus(card) === "known";
-      const articleKnown = !card.isNoun || getArticleStatus(card) === "known";
-      if (meaningKnown && articleKnown) summary.wordsLearned += 1;
-      if (card.isNoun && meaningKnown && !articleKnown) summary.articleGap += 1;
-      return summary;
-    },
-    { wordsLearned: 0, articleGap: 0, total: cards.length }
-  );
+function getWordsLearnedCount() {
+  return cards.filter((card) => {
+    const meaningKnown = getMeaningStatus(card) === "known";
+    const articleKnown = !card.isNoun || getArticleStatus(card) === "known";
+    return meaningKnown && articleKnown;
+  }).length;
 }
 
 function updateRatingButtonLabels(mode) {
