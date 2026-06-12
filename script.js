@@ -861,13 +861,14 @@ function renderArticleResult(card) {
   const isCorrect = selectedQuizArticle === card.article;
   els.articleQuizResult.innerHTML = isCorrect
     ? `
-      <span class="quiz-result-label">Correct</span>
-      <span class="quiz-result-answer">Correct answer: ${escapeHtml(fullAnswer)}</span>
+      <span class="quiz-result-label">✅ Correct</span>
+      <span class="quiz-result-answer">${escapeHtml(fullAnswer)}</span>
       <span class="quiz-result-meaning">${escapeHtml(card.english)}</span>
     `
     : `
-      <span class="quiz-result-label">Wrong</span>
-      <span class="quiz-result-answer">Correct answer: ${escapeHtml(fullAnswer)}</span>
+      <span class="quiz-result-label">❌ Wrong</span>
+      <span class="quiz-result-correction">Correct answer:</span>
+      <span class="quiz-result-answer">${escapeHtml(fullAnswer)}</span>
       <span class="quiz-result-meaning">${escapeHtml(card.english)}</span>
     `;
   els.articleQuizResult.classList.toggle("hidden", !articleQuizAnswered);
