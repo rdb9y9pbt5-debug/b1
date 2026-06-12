@@ -7,10 +7,10 @@ const PROFILE_STORAGE_KEY = "goethe-b1-profile-store-v1";
 const PROFILE_STORE_VERSION = 1;
 
 const DEFAULT_PROFILES = [
-  { id: "mineko", name: "Mineko", emoji: "⭐" },
-  { id: "sami", name: "Sami", emoji: "🎹" },
-  { id: "mai", name: "Mai", emoji: "🌸" },
-  { id: "ziad", name: "Ziad", emoji: "☕" }
+  { id: "mineko", name: "Mineko", emoji: "⭐", avatar: "avatars/mineko.png" },
+  { id: "sami", name: "Sami", emoji: "🚀", avatar: "avatars/sami.png" },
+  { id: "mai", name: "Mai", emoji: "🌸", avatar: "avatars/mai.png" },
+  { id: "ziad", name: "Ziad", emoji: "📚", avatar: "avatars/ziad.png" }
 ];
 
 const LEADERBOARD_PROFILE_IDS = ["mineko", "sami", "mai"];
@@ -51,6 +51,7 @@ const els = {
   profileGrid: document.querySelector("#profileGrid"),
   appShell: document.querySelector("#appShell"),
   dashboardScreen: document.querySelector("#dashboardScreen"),
+  dashboardAvatar: document.querySelector("#dashboardAvatar"),
   dashboardWelcome: document.querySelector("#dashboardWelcome"),
   dashboardWordsLearned: document.querySelector("#dashboardWordsLearned"),
   dashboardWordsTotal: document.querySelector("#dashboardWordsTotal"),
@@ -243,7 +244,8 @@ function normalizeProfileData(data, profile) {
   return {
     id: profile.id,
     name: data?.name || profile.name,
-    emoji: data?.emoji || profile.emoji,
+    emoji: profile.emoji,
+    avatar: data?.avatar || profile.avatar,
     coins: normalizeCoinCount(data?.coins),
     dailyChallenge: normalizeDailyChallenge(data?.dailyChallenge),
     streak: normalizeStreak(data?.streak),
@@ -448,6 +450,7 @@ function renderDashboard() {
   els.challengeProgressFill.style.width = `${Math.min((challenge.articleQuestions / DAILY_CHALLENGE_GOAL) * 100, 100)}%`;
   els.streakCurrent.textContent = `🔥 ${streak.current} Day Streak`;
   els.streakBest.textContent = `Best Streak: ${streak.best} days`;
+  renderAvatar(els.dashboardAvatar, profile);
   renderCoinLeaderboard();
   saveProfileStore();
 }
@@ -464,14 +467,56 @@ function renderCoinLeaderboard() {
       const row = document.createElement("div");
       row.className = "leaderboard-row";
       row.classList.toggle("current", profile.id === currentProfileId);
-      row.innerHTML = `
-        <span class="leaderboard-rank">${medals[index] || ""}</span>
-        <span class="leaderboard-name">${escapeHtml(profile.name)}</span>
-        <strong>${normalizeCoinCount(profile.coins)} coins</strong>
-      `;
+      row.replaceChildren(
+        createTextElement("span", "leaderboard-rank", medals[index] || ""),
+        createAvatarElement(profile, "leaderboard-avatar"),
+        createTextElement("span", "leaderboard-name", profile.name),
+        createTextElement("strong", "", `${normalizeCoinCount(profile.coins)} coins`)
+      );
       return row;
     })
   );
+}
+
+function createTextElement(tagName, className, text) {
+  const element = document.createElement(tagName);
+  if (className) element.className = className;
+  element.textContent = text;
+  return element;
+}
+
+function createAvatarElement(profile, extraClass = "") {
+  const container = document.createElement("span");
+  container.className = ["avatar-wrap", extraClass].filter(Boolean).join(" ");
+  renderAvatar(container, profile);
+  return container;
+}
+
+function renderAvatar(container, profile) {
+  if (!container || !profile) return;
+  container.replaceChildren();
+  container.classList.remove("avatar-fallback");
+
+  if (!profile.avatar) {
+    container.textContent = profile.emoji;
+    container.classList.add("avatar-fallback");
+    return;
+  }
+
+  const image = document.createElement("img");
+  image.src = profile.avatar;
+  image.alt = "";
+  image.width = 48;
+  image.height = 48;
+  image.addEventListener(
+    "error",
+    () => {
+      container.replaceChildren(document.createTextNode(profile.emoji));
+      container.classList.add("avatar-fallback");
+    },
+    { once: true }
+  );
+  container.appendChild(image);
 }
 
 function getCoinLevel(coinsValue) {
@@ -547,16 +592,26 @@ function renderProfileCards() {
       button.className = "profile-card";
       button.type = "button";
       button.dataset.profileId = profile.id;
-      button.innerHTML = `
-        <span class="profile-emoji" aria-hidden="true">${profile.emoji}</span>
-        <span class="profile-name">${profile.name}</span>
-        <span class="profile-last">${stats.lastStudyDate}</span>
-        <span class="profile-stat"><strong>${stats.total}</strong> words</span>
-        <span class="profile-stat"><strong>${stats.known}</strong> known</span>
-        <span class="profile-stat"><strong>${stats.unsure}</strong> unsure</span>
-        <span class="profile-stat"><strong>${stats.unknown}</strong> unknown</span>
-        <span class="profile-stat"><strong>${stats.mastered}</strong> mastered</span>
-      `;
+      const total = createTextElement("span", "profile-stat", " words");
+      total.prepend(createTextElement("strong", "", stats.total));
+      const known = createTextElement("span", "profile-stat", " known");
+      known.prepend(createTextElement("strong", "", stats.known));
+      const unsure = createTextElement("span", "profile-stat", " unsure");
+      unsure.prepend(createTextElement("strong", "", stats.unsure));
+      const unknown = createTextElement("span", "profile-stat", " unknown");
+      unknown.prepend(createTextElement("strong", "", stats.unknown));
+      const mastered = createTextElement("span", "profile-stat", " mastered");
+      mastered.prepend(createTextElement("strong", "", stats.mastered));
+      button.replaceChildren(
+        createAvatarElement(profile, "profile-avatar"),
+        createTextElement("span", "profile-name", profile.name),
+        createTextElement("span", "profile-last", stats.lastStudyDate),
+        total,
+        known,
+        unsure,
+        unknown,
+        mastered
+      );
       return button;
     })
   );
