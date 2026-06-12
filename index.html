@@ -8,7 +8,7 @@
     <meta name="apple-mobile-web-app-title" content="B1 Karten">
     <meta name="apple-mobile-web-app-status-bar-style" content="default">
     <title>Goethe B1 Flashcards</title>
-    <link rel="stylesheet" href="style.css?v=20">
+    <link rel="stylesheet" href="style.css?v=21">
   </head>
   <body>
     <section class="lock-screen" id="lockScreen" aria-label="Password required">
@@ -69,9 +69,15 @@
             <p>+1 coin for every correct article answer.</p>
             <p>Your coins are saved to your profile.</p>
           </div>
+          <strong class="coin-total">Your coins: <span id="dashboardCurrentCoins">0</span></strong>
         </article>
 
         <button class="start-earning-button" type="button" data-dashboard-action="earn-coins">Start Earning</button>
+
+        <section class="leaderboard-card" aria-label="Family coin leaderboard">
+          <h3>🏆 Family Coin Leaderboard</h3>
+          <div class="leaderboard-list" id="leaderboardList"></div>
+        </section>
 
         <div class="dashboard-progress" aria-label="Dashboard progress">
           <article class="dashboard-card learned">
@@ -276,6 +282,6 @@
       </footer>
     </main>
 
-    <script src="script.js?v=20"></script>
+    <script src="script.js?v=21"></script>
   </body>
 </html>
