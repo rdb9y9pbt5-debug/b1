@@ -42,6 +42,7 @@ const els = {
   modeSelect: document.querySelector("#modeSelect"),
   filterSelect: document.querySelector("#filterSelect"),
   startSelect: document.querySelector("#startSelect"),
+  orderSelect: document.querySelector("#orderSelect"),
   wordSearchInput: document.querySelector("#wordSearchInput"),
   searchResults: document.querySelector("#searchResults"),
   csvInput: document.querySelector("#csvInput"),
@@ -74,6 +75,8 @@ const els = {
   answerMeaning: document.querySelector("#answerMeaning"),
   answerExample: document.querySelector("#answerExample"),
   emptyState: document.querySelector("#emptyState"),
+  previousCard: document.querySelector("#previousCard"),
+  nextCard: document.querySelector("#nextCard"),
   showAnswer: document.querySelector("#showAnswer"),
   meaningOnlyButton: document.querySelector("#meaningOnlyButton"),
   ratingButtons: document.querySelector("#ratingButtons")
@@ -91,6 +94,8 @@ let articleProgress = {};
 let profileStore = null;
 let currentProfileId = "";
 let searchResults = [];
+let randomSessionKey = "";
+let randomSessionIds = [];
 
 document.addEventListener("DOMContentLoaded", init);
 
@@ -207,7 +212,8 @@ function normalizeProfileData(data, profile) {
     settings: {
       mode: data?.settings?.mode || "de-en",
       filter: data?.settings?.filter || "all",
-      start: data?.settings?.start || "all"
+      start: data?.settings?.start || "all",
+      order: data?.settings?.order || "alphabetical"
     },
     history: Array.isArray(data?.history) ? data.history : [],
     lastStudyDate: data?.lastStudyDate || ""
@@ -261,6 +267,7 @@ function applyProfileSettings(settings) {
   updateFilterOptions();
   els.filterSelect.value = getValidFilterValue(settings.filter || "all");
   els.startSelect.value = settings.start || "all";
+  els.orderSelect.value = settings.order || "alphabetical";
 }
 
 function saveSettings() {
@@ -269,7 +276,8 @@ function saveSettings() {
   profile.settings = {
     mode: els.modeSelect.value,
     filter: els.filterSelect.value,
-    start: els.startSelect.value
+    start: els.startSelect.value,
+    order: els.orderSelect.value
   };
   saveProfileStore();
 }
@@ -351,6 +359,14 @@ function bindEvents() {
     applyModeAndFilter();
   });
 
+  els.orderSelect.addEventListener("change", () => {
+    currentIndex = 0;
+    randomSessionKey = "";
+    randomSessionIds = [];
+    saveSettings();
+    applyModeAndFilter();
+  });
+
   els.wordSearchInput.addEventListener("input", updateSearchResults);
 
   els.searchResults.addEventListener("click", (event) => {
@@ -360,6 +376,9 @@ function bindEvents() {
   });
 
   els.showAnswer.addEventListener("click", revealAnswer);
+
+  els.previousCard.addEventListener("click", () => moveCard(-1));
+  els.nextCard.addEventListener("click", () => moveCard(1));
 
   els.ratingButtons.addEventListener("click", (event) => {
     const button = event.target.closest("button[data-rating]");
@@ -482,6 +501,7 @@ function applyModeAndFilter() {
   const mode = els.modeSelect.value;
   const filter = els.filterSelect.value;
   const startLetter = els.startSelect.value;
+  const order = els.orderSelect.value;
 
   const filteredCards = cards.filter((card) => {
     const rating = progress[card.id]?.rating;
@@ -502,7 +522,7 @@ function applyModeAndFilter() {
     return true;
   });
 
-  visibleCards = applyStartLetter(filteredCards, startLetter);
+  visibleCards = applyStudyOrder(applyStartLetter(filteredCards, startLetter), order);
   currentIndex = clamp(currentIndex, 0, Math.max(visibleCards.length - 1, 0));
   answerShown = false;
   selectedArticle = "";
@@ -573,6 +593,7 @@ function openSearchResult(cardId) {
   updateFilterOptions();
   els.filterSelect.value = "all";
   els.startSelect.value = "all";
+  els.orderSelect.value = "alphabetical";
   applyModeAndFilter();
 
   const index = visibleCards.findIndex((item) => item.id === card.id);
@@ -613,8 +634,10 @@ function renderCard() {
   const modeText = getModeText(mode);
 
   els.cardMode.textContent = modeText;
-  els.cardCounter.textContent = visibleCards.length ? `${currentIndex + 1} / ${visibleCards.length}` : "0 / 0";
+  els.cardCounter.textContent = visibleCards.length ? `Card ${currentIndex + 1} of ${visibleCards.length}` : "Card 0 of 0";
   els.emptyState.classList.toggle("hidden", Boolean(card));
+  els.previousCard.disabled = visibleCards.length < 2;
+  els.nextCard.disabled = visibleCards.length < 2;
   els.showAnswer.disabled = !card;
   els.showAnswer.classList.toggle("hidden", mode === "article-quiz" || !card || answerShown);
   els.ratingButtons.classList.toggle("hidden", mode === "article-quiz" || !card || !answerShown);
@@ -654,6 +677,16 @@ function renderCard() {
 function revealAnswer() {
   if (!visibleCards[currentIndex]) return;
   answerShown = true;
+  renderCard();
+}
+
+function moveCard(direction) {
+  if (!visibleCards.length) return;
+  currentIndex = (currentIndex + direction + visibleCards.length) % visibleCards.length;
+  answerShown = false;
+  selectedArticle = "";
+  articleQuizAnswered = false;
+  selectedQuizArticle = "";
   renderCard();
 }
 
@@ -804,6 +837,35 @@ function applyStartLetter(cardList, startLetter) {
   if (startLetter === "all") return sortedCards;
   const startIndex = sortedCards.findIndex((card) => getSortLetter(card.word) >= startLetter);
   return startIndex === -1 ? [] : sortedCards.slice(startIndex);
+}
+
+function applyStudyOrder(cardList, order) {
+  if (order !== "random") return cardList;
+
+  const sessionKey = [
+    currentProfileId,
+    els.modeSelect.value,
+    els.filterSelect.value,
+    els.startSelect.value,
+    cardList.map((card) => card.id).join("|")
+  ].join("::");
+
+  if (sessionKey !== randomSessionKey) {
+    randomSessionKey = sessionKey;
+    randomSessionIds = shuffleCards(cardList).map((card) => card.id);
+  }
+
+  const cardsById = new Map(cardList.map((card) => [card.id, card]));
+  return randomSessionIds.map((id) => cardsById.get(id)).filter(Boolean);
+}
+
+function shuffleCards(cardList) {
+  const shuffled = [...cardList];
+  for (let index = shuffled.length - 1; index > 0; index -= 1) {
+    const swapIndex = Math.floor(Math.random() * (index + 1));
+    [shuffled[index], shuffled[swapIndex]] = [shuffled[swapIndex], shuffled[index]];
+  }
+  return shuffled;
 }
 
 function getSortLetter(word) {
