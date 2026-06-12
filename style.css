@@ -428,6 +428,37 @@ select,
   text-transform: uppercase;
 }
 
+.mastery-badge {
+  max-width: min(100%, 34rem);
+  border: 1px solid currentColor;
+  border-radius: 999px;
+  padding: 6px 12px;
+  font-size: clamp(0.82rem, 1.8vw, 0.98rem);
+  font-weight: 900;
+  line-height: 1.2;
+}
+
+.mastery-badge.fully-known,
+.mastery-badge.known {
+  background: var(--green-soft);
+  color: var(--green);
+}
+
+.mastery-badge.meaning-known {
+  background: var(--amber-soft);
+  color: var(--amber);
+}
+
+.mastery-badge.article-known {
+  background: var(--blue-soft);
+  color: var(--blue);
+}
+
+.mastery-badge.new {
+  background: rgba(255, 253, 248, 0.9);
+  color: var(--muted);
+}
+
 #questionText {
   max-width: 18ch;
   overflow-wrap: anywhere;
