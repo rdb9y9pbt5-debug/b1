@@ -419,23 +419,22 @@ h1 {
 
 .resume-actions {
   display: grid;
-  grid-template-columns: minmax(0, 1fr) auto;
+  grid-template-columns: minmax(0, 1fr);
   gap: 8px;
   align-items: center;
 }
 
 .resume-actions button {
-  min-height: 52px;
-  background: var(--ink);
-  color: var(--paper);
-  padding: 0 14px;
-}
-
-.resume-actions .small-button {
-  min-height: 44px;
+  justify-self: start;
+  min-height: 42px;
   background: rgba(255, 253, 248, 0.92);
   border: 1px solid var(--line);
   color: var(--ink);
+  padding: 0 14px;
+  font-size: 0.9rem;
+}
+
+.resume-actions .small-button {
   font-size: 0.88rem;
 }
 

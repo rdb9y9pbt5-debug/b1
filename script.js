@@ -624,10 +624,8 @@ function handleDashboardAction(action) {
 
   const routes = {
     continue: { mode: "de-en", filter: "all", resume: true },
-    "resume-vocabulary": { mode: "de-en", filter: "all", resume: true },
     articles: { mode: "article", filter: "allArticle", resume: true },
     "earn-coins": { mode: "article", filter: "allArticle", resume: true },
-    "resume-articles": { mode: "article", filter: "allArticle", resume: true },
     "unknown-meanings": { mode: "de-en", filter: "unknownMeaning" },
     "unknown-articles": { mode: "article", filter: "unknownArticles" },
     search: { mode: "de-en", filter: "all", focusSearch: true },
@@ -809,7 +807,10 @@ function bindEvents() {
   els.previousCard.addEventListener("click", () => moveCard(-1));
   els.nextCard.addEventListener("click", () => moveCard(1));
 
-  els.homeButton.addEventListener("click", showDashboard);
+  els.homeButton.addEventListener("click", () => {
+    saveCurrentPosition();
+    showDashboard();
+  });
 
   els.ratingButtons.addEventListener("click", (event) => {
     const button = event.target.closest("button[data-rating]");
@@ -829,7 +830,10 @@ function bindEvents() {
     answerArticleQuiz(button.dataset.quizArticle);
   });
 
-  els.switchProfile.addEventListener("click", showProfileScreen);
+  els.switchProfile.addEventListener("click", () => {
+    saveCurrentPosition();
+    showProfileScreen();
+  });
 
   els.lockApp.addEventListener("click", () => {
     localStorage.removeItem(UNLOCK_STORAGE_KEY);
