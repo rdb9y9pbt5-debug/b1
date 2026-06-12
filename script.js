@@ -61,10 +61,6 @@ const els = {
   dashboardWordsTotal: document.querySelector("#dashboardWordsTotal"),
   dashboardArticlesLearned: document.querySelector("#dashboardArticlesLearned"),
   dashboardNounsTotal: document.querySelector("#dashboardNounsTotal"),
-  resumeVocabularyPosition: document.querySelector("#resumeVocabularyPosition"),
-  resumeVocabularyTotal: document.querySelector("#resumeVocabularyTotal"),
-  resumeArticlePosition: document.querySelector("#resumeArticlePosition"),
-  resumeArticleTotal: document.querySelector("#resumeArticleTotal"),
   levelIcon: document.querySelector("#levelIcon"),
   levelName: document.querySelector("#levelName"),
   levelCoins: document.querySelector("#levelCoins"),
@@ -477,10 +473,6 @@ function renderDashboard() {
   els.dashboardWordsTotal.textContent = cards.length;
   els.dashboardArticlesLearned.textContent = articleSummary.known;
   els.dashboardNounsTotal.textContent = articleSummary.nouns;
-  els.resumeVocabularyPosition.textContent = formatResumePosition(profile.positions.vocabulary, cards.length);
-  els.resumeVocabularyTotal.textContent = cards.length;
-  els.resumeArticlePosition.textContent = formatResumePosition(profile.positions.article, articleSummary.nouns);
-  els.resumeArticleTotal.textContent = articleSummary.nouns;
   els.levelIcon.textContent = level.icon;
   els.levelName.textContent = level.name;
   els.levelCoins.textContent = normalizeCoinCount(profile.coins);
