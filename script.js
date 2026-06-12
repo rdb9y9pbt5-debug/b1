@@ -19,11 +19,14 @@ const DAILY_CHALLENGE_REWARD = 10;
 const STREAK_ACTIVITY_GOAL = 10;
 const COIN_LEVELS = [
   { min: 0, next: 50, icon: "🪙", name: "Coin Pouch" },
-  { min: 50, next: 200, icon: "👛", name: "Wallet" },
-  { min: 200, next: 500, icon: "🐷", name: "Piggy Bank" },
-  { min: 500, next: 1000, icon: "🏧", name: "ATM" },
-  { min: 1000, next: 2000, icon: "🏦", name: "Bank" },
-  { min: 2000, next: null, icon: "💎", name: "Investment Fund" }
+  { min: 50, next: 150, icon: "👛", name: "Wallet" },
+  { min: 150, next: 300, icon: "🐷", name: "Piggy Bank" },
+  { min: 300, next: 500, icon: "💰", name: "Treasure Chest" },
+  { min: 500, next: 800, icon: "🏧", name: "ATM" },
+  { min: 800, next: 1200, icon: "🏦", name: "Bank" },
+  { min: 1200, next: 1600, icon: "🏛️", name: "Bill Gates" },
+  { min: 1600, next: 2500, icon: "💎", name: "Jeff Bezos" },
+  { min: 2500, next: null, icon: "👑", name: "Elon Musk" }
 ];
 
 const STANDARD_FILTERS = [
