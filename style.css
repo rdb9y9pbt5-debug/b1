@@ -110,6 +110,40 @@ body {
   font-weight: 650;
 }
 
+.family-wealth-card {
+  border: 1px solid rgba(222, 216, 203, 0.92);
+  border-radius: 8px;
+  background: linear-gradient(135deg, var(--violet-soft), rgba(255, 253, 248, 0.96));
+  box-shadow: var(--shadow);
+  padding: clamp(18px, 3vw, 28px);
+  display: grid;
+  gap: 14px;
+}
+
+.family-wealth-main {
+  display: grid;
+  gap: 4px;
+}
+
+.family-wealth-main strong {
+  color: var(--violet);
+  font-size: clamp(2.1rem, 6vw, 4rem);
+  line-height: 0.95;
+}
+
+.family-goal {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto auto;
+  align-items: center;
+  gap: 10px;
+  color: var(--muted);
+  font-weight: 850;
+}
+
+.family-goal strong {
+  color: var(--ink);
+}
+
 .profile-grid {
   display: grid;
   grid-template-columns: repeat(4, 1fr);
@@ -117,7 +151,7 @@ body {
 }
 
 .profile-card {
-  min-height: 250px;
+  min-height: 190px;
   border: 1px solid rgba(222, 216, 203, 0.95);
   border-radius: 8px;
   background: rgba(255, 253, 248, 0.92);
@@ -173,10 +207,23 @@ body {
 }
 
 .profile-last,
-.profile-stat {
+.profile-stat,
+.profile-level,
+.profile-coins {
   color: var(--muted);
   font-size: 0.92rem;
   font-weight: 750;
+}
+
+.profile-level {
+  color: var(--violet);
+  font-weight: 900;
+}
+
+.profile-coins {
+  color: var(--ink);
+  font-size: 1.05rem;
+  font-weight: 900;
 }
 
 .profile-stat strong {
@@ -1101,12 +1148,17 @@ select,
     align-content: center;
   }
 
+  .family-goal {
+    grid-template-columns: 1fr;
+    gap: 4px;
+  }
+
   .profile-grid {
     grid-template-columns: repeat(2, 1fr);
   }
 
   .profile-card {
-    min-height: 210px;
+    min-height: 168px;
     padding: 14px;
   }
 
@@ -1293,7 +1345,7 @@ select,
   }
 
   .profile-card {
-    min-height: 188px;
+    min-height: 160px;
   }
 
   .dashboard-heading h2 {

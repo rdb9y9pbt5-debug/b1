@@ -8,7 +8,7 @@
     <meta name="apple-mobile-web-app-title" content="B1 Karten">
     <meta name="apple-mobile-web-app-status-bar-style" content="default">
     <title>Goethe B1 Flashcards</title>
-    <link rel="stylesheet" href="style.css?v=32">
+    <link rel="stylesheet" href="style.css?v=33">
   </head>
   <body>
     <section class="lock-screen" id="lockScreen" aria-label="Password required">
@@ -29,10 +29,25 @@
         <div class="profile-heading">
           <span class="brand-mark" aria-hidden="true">B1</span>
           <div>
-            <h1>Choose Profile</h1>
-            <p>Each profile keeps its own vocabulary progress.</p>
+            <h1>SprachQuest</h1>
+            <p>For the Zaghrout Family</p>
           </div>
         </div>
+        <section class="family-wealth-card" aria-label="Family wealth">
+          <div class="family-wealth-main">
+            <p class="eyebrow">🏦 Family Wealth</p>
+            <strong><span id="familyWealthCoins">0</span> Coins</strong>
+          </div>
+          <div class="family-goal">
+            <span>Next Family Goal</span>
+            <strong><span id="familyGoalCoins">500</span> Coins</strong>
+            <span><span id="familyGoalRemaining">500</span> Coins Remaining</span>
+          </div>
+          <div class="progress-track" aria-hidden="true">
+            <span id="familyWealthProgressFill"></span>
+          </div>
+          <p class="progress-note"><span id="familyWealthProgressText">0 / 500</span></p>
+        </section>
         <div class="profile-grid" id="profileGrid"></div>
       </div>
     </section>
@@ -326,6 +341,6 @@
       </footer>
     </main>
 
-    <script src="script.js?v=32"></script>
+    <script src="script.js?v=33"></script>
   </body>
 </html>

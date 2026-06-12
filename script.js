@@ -18,6 +18,13 @@ const DAILY_CHALLENGE_GOAL = 20;
 const DAILY_CHALLENGE_REWARD = 10;
 const STREAK_ACTIVITY_GOAL = 10;
 const LEVEL_UP_BONUS = 25;
+const FAMILY_MILESTONES = [
+  { coins: 500, reward: "" },
+  { coins: 1000, reward: "" },
+  { coins: 2000, reward: "" },
+  { coins: 5000, reward: "" },
+  { coins: 10000, reward: "" }
+];
 const COIN_LEVELS = [
   { min: 0, next: 50, icon: "🪙", name: "Coin Pouch" },
   { min: 50, next: 150, icon: "👛", name: "Wallet" },
@@ -53,6 +60,11 @@ const els = {
   lockError: document.querySelector("#lockError"),
   profileScreen: document.querySelector("#profileScreen"),
   profileGrid: document.querySelector("#profileGrid"),
+  familyWealthCoins: document.querySelector("#familyWealthCoins"),
+  familyGoalCoins: document.querySelector("#familyGoalCoins"),
+  familyGoalRemaining: document.querySelector("#familyGoalRemaining"),
+  familyWealthProgressFill: document.querySelector("#familyWealthProgressFill"),
+  familyWealthProgressText: document.querySelector("#familyWealthProgressText"),
   appShell: document.querySelector("#appShell"),
   dashboardScreen: document.querySelector("#dashboardScreen"),
   dashboardAvatar: document.querySelector("#dashboardAvatar"),
@@ -696,37 +708,45 @@ function confirmAndResetSavedPosition(key) {
 }
 
 function renderProfileCards() {
+  renderFamilyWealth();
   els.profileGrid.replaceChildren(
     ...DEFAULT_PROFILES.map((profileInfo) => {
       const profile = profileStore.profiles[profileInfo.id];
-      const stats = getProfileDashboardStats(profile);
+      const level = getCoinLevel(profile.coins);
       const button = document.createElement("button");
       button.className = "profile-card";
       button.type = "button";
       button.dataset.profileId = profile.id;
-      const total = createTextElement("span", "profile-stat", " words");
-      total.prepend(createTextElement("strong", "", stats.total));
-      const known = createTextElement("span", "profile-stat", " known");
-      known.prepend(createTextElement("strong", "", stats.known));
-      const unsure = createTextElement("span", "profile-stat", " unsure");
-      unsure.prepend(createTextElement("strong", "", stats.unsure));
-      const unknown = createTextElement("span", "profile-stat", " unknown");
-      unknown.prepend(createTextElement("strong", "", stats.unknown));
-      const mastered = createTextElement("span", "profile-stat", " mastered");
-      mastered.prepend(createTextElement("strong", "", stats.mastered));
       button.replaceChildren(
         createAvatarElement(profile, "profile-avatar"),
         createTextElement("span", "profile-name", profile.name),
-        createTextElement("span", "profile-last", stats.lastStudyDate),
-        total,
-        known,
-        unsure,
-        unknown,
-        mastered
+        createTextElement("span", "profile-level", `${level.icon} ${level.name}`),
+        createTextElement("span", "profile-coins", `${normalizeCoinCount(profile.coins)} Coins`)
       );
       return button;
     })
   );
+}
+
+function renderFamilyWealth() {
+  const summary = getFamilyWealthSummary();
+  els.familyWealthCoins.textContent = summary.totalCoins;
+  els.familyGoalCoins.textContent = summary.nextGoal.coins;
+  els.familyGoalRemaining.textContent = summary.remaining;
+  els.familyWealthProgressFill.style.width = `${summary.progressPercent}%`;
+  els.familyWealthProgressText.textContent = `${summary.totalCoins} / ${summary.nextGoal.coins}`;
+}
+
+function getFamilyWealthSummary() {
+  const totalCoins = DEFAULT_PROFILES.reduce((total, profileInfo) => {
+    const profile = profileStore.profiles[profileInfo.id];
+    return total + normalizeCoinCount(profile?.coins);
+  }, 0);
+  const nextGoal = FAMILY_MILESTONES.find((milestone) => totalCoins < milestone.coins)
+    || FAMILY_MILESTONES[FAMILY_MILESTONES.length - 1];
+  const remaining = Math.max(nextGoal.coins - totalCoins, 0);
+  const progressPercent = nextGoal.coins ? Math.min((totalCoins / nextGoal.coins) * 100, 100) : 100;
+  return { totalCoins, nextGoal, remaining, progressPercent };
 }
 
 function getProfileDashboardStats(profile) {
