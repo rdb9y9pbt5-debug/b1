@@ -8,7 +8,7 @@
     <meta name="apple-mobile-web-app-title" content="B1 Karten">
     <meta name="apple-mobile-web-app-status-bar-style" content="default">
     <title>Goethe B1 Flashcards</title>
-    <link rel="stylesheet" href="style.css?v=11">
+    <link rel="stylesheet" href="style.css?v=12">
   </head>
   <body>
     <section class="lock-screen" id="lockScreen" aria-label="Password required">
@@ -170,7 +170,10 @@
 
           <div class="question-area">
             <p class="eyebrow" id="promptLabel">German</p>
-            <p class="mastery-badge hidden" id="masteryBadge">New / not mastered</p>
+            <div class="mastery-summary hidden" id="masterySummary" aria-label="Progress summary">
+              <span class="mastery-bubble learned" id="wordsLearnedBadge">Words learned: 0 <small>/ 0</small></span>
+              <span class="mastery-bubble articles" id="articleGapBadge">Need to learn articles: 0</span>
+            </div>
             <h2 id="questionText">Vocabulary loading</h2>
           </div>
 
@@ -232,6 +235,6 @@
       </footer>
     </main>
 
-    <script src="script.js?v=11"></script>
+    <script src="script.js?v=12"></script>
   </body>
 </html>
