@@ -8,7 +8,7 @@
     <meta name="apple-mobile-web-app-title" content="B1 Karten">
     <meta name="apple-mobile-web-app-status-bar-style" content="default">
     <title>Goethe B1 Flashcards</title>
-    <link rel="stylesheet" href="style.css?v=24">
+    <link rel="stylesheet" href="style.css?v=25">
   </head>
   <body>
     <section class="lock-screen" id="lockScreen" aria-label="Password required">
@@ -83,6 +83,32 @@
           </div>
           <button class="start-earning-button" type="button" data-dashboard-action="earn-coins">Start Earning</button>
         </article>
+
+        <section class="resume-card" aria-label="Continue where you left off">
+          <h3>Continue Where You Left Off</h3>
+          <div class="resume-grid">
+            <article class="resume-item">
+              <div>
+                <strong>📚 Vocabulary</strong>
+                <span>Card <span id="resumeVocabularyPosition">1</span> of <span id="resumeVocabularyTotal">0</span></span>
+              </div>
+              <div class="resume-actions">
+                <button type="button" data-dashboard-action="resume-vocabulary">Resume Vocabulary</button>
+                <button class="small-button" type="button" data-dashboard-action="restart-vocabulary">Restart Deck</button>
+              </div>
+            </article>
+            <article class="resume-item">
+              <div>
+                <strong>🏷 Articles</strong>
+                <span>Card <span id="resumeArticlePosition">1</span> of <span id="resumeArticleTotal">0</span></span>
+              </div>
+              <div class="resume-actions">
+                <button type="button" data-dashboard-action="resume-articles">Resume Articles</button>
+                <button class="small-button" type="button" data-dashboard-action="restart-articles">Restart Deck</button>
+              </div>
+            </article>
+          </div>
+        </section>
 
         <article class="challenge-card" aria-label="Daily challenge">
           <div class="challenge-heading">
@@ -309,6 +335,6 @@
       </footer>
     </main>
 
-    <script src="script.js?v=24"></script>
+    <script src="script.js?v=25"></script>
   </body>
 </html>
