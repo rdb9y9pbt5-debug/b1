@@ -285,16 +285,12 @@ h1 {
 }
 
 .coins-card {
-  min-height: 132px;
+  min-height: 120px;
   border: 1px solid rgba(222, 216, 203, 0.92);
   border-radius: 8px;
   background: linear-gradient(135deg, var(--violet-soft), rgba(255, 253, 248, 0.94));
   box-shadow: var(--shadow);
   padding: clamp(16px, 2.6vw, 24px);
-  display: grid;
-  grid-template-columns: minmax(0, 1fr) minmax(150px, 0.28fr);
-  gap: 16px;
-  align-items: center;
 }
 
 .coins-card h3 {
@@ -310,11 +306,13 @@ h1 {
   line-height: 1.25;
 }
 
-.coins-card button {
-  min-height: 58px;
+.start-earning-button {
+  min-height: 64px;
   background: var(--violet);
   color: white;
-  padding: 0 16px;
+  padding: 0 20px;
+  font-size: clamp(1.08rem, 2.5vw, 1.35rem);
+  font-weight: 900;
 }
 
 .dashboard-progress {
@@ -856,13 +854,11 @@ select,
 
   .coins-card {
     min-height: auto;
-    grid-template-columns: 1fr;
-    gap: 12px;
     padding: 14px;
   }
 
-  .coins-card button {
-    width: 100%;
+  .start-earning-button {
+    min-height: 58px;
   }
 
   .dashboard-progress {
