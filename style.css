@@ -314,6 +314,7 @@ h1 {
 
 .level-card,
 .earn-coins-card,
+.resume-card,
 .challenge-card,
 .streak-card {
   min-height: 120px;
@@ -335,6 +336,63 @@ h1 {
   align-items: center;
 }
 
+.resume-card {
+  background: rgba(255, 253, 248, 0.9);
+}
+
+.resume-card h3 {
+  margin: 0;
+  font-size: clamp(1.18rem, 2.8vw, 1.65rem);
+}
+
+.resume-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 10px;
+}
+
+.resume-item {
+  min-height: 128px;
+  border: 1px solid rgba(222, 216, 203, 0.72);
+  border-radius: 8px;
+  background: rgba(255, 253, 248, 0.82);
+  padding: 12px;
+  display: grid;
+  gap: 12px;
+}
+
+.resume-item strong {
+  display: block;
+  font-size: clamp(1.05rem, 2.4vw, 1.3rem);
+}
+
+.resume-item span {
+  color: var(--muted);
+  font-weight: 800;
+}
+
+.resume-actions {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 8px;
+  align-items: center;
+}
+
+.resume-actions button {
+  min-height: 52px;
+  background: var(--ink);
+  color: var(--paper);
+  padding: 0 14px;
+}
+
+.resume-actions .small-button {
+  min-height: 44px;
+  background: rgba(255, 253, 248, 0.92);
+  border: 1px solid var(--line);
+  color: var(--ink);
+  font-size: 0.88rem;
+}
+
 .challenge-card {
   background: linear-gradient(135deg, var(--green-soft), rgba(255, 253, 248, 0.94));
 }
@@ -345,6 +403,7 @@ h1 {
 
 .level-card h3,
 .earn-coins-card h3,
+.resume-card h3,
 .challenge-card h3,
 .streak-card h3 {
   margin: 0 0 8px;
@@ -354,6 +413,7 @@ h1 {
 
 .level-card p,
 .earn-coins-card p,
+.resume-card p,
 .challenge-card p,
 .streak-card p {
   color: var(--muted);
@@ -1004,6 +1064,7 @@ select,
 
   .level-card,
   .earn-coins-card,
+  .resume-card,
   .challenge-card,
   .streak-card,
   .leaderboard-card {
@@ -1016,6 +1077,10 @@ select,
   }
 
   .earn-coins-card {
+    grid-template-columns: 1fr;
+  }
+
+  .resume-grid {
     grid-template-columns: 1fr;
   }
 
@@ -1160,6 +1225,10 @@ select,
 
   .dashboard-actions {
     gap: 6px;
+  }
+
+  .resume-actions {
+    grid-template-columns: 1fr;
   }
 
   .dashboard-actions button {

@@ -60,6 +60,10 @@ const els = {
   dashboardWordsTotal: document.querySelector("#dashboardWordsTotal"),
   dashboardArticlesLearned: document.querySelector("#dashboardArticlesLearned"),
   dashboardNounsTotal: document.querySelector("#dashboardNounsTotal"),
+  resumeVocabularyPosition: document.querySelector("#resumeVocabularyPosition"),
+  resumeVocabularyTotal: document.querySelector("#resumeVocabularyTotal"),
+  resumeArticlePosition: document.querySelector("#resumeArticlePosition"),
+  resumeArticleTotal: document.querySelector("#resumeArticleTotal"),
   levelIcon: document.querySelector("#levelIcon"),
   levelName: document.querySelector("#levelName"),
   levelCoins: document.querySelector("#levelCoins"),
@@ -255,6 +259,7 @@ function normalizeProfileData(data, profile) {
     decks: data?.decks || {},
     progress: normalizeMeaningProgress(data?.progress || {}),
     articleProgress: normalizeArticleProgress(data?.articleProgress || {}),
+    positions: normalizePositions(data?.positions),
     settings: {
       mode: data?.settings?.mode || "de-en",
       filter: data?.settings?.filter || "all",
@@ -264,6 +269,19 @@ function normalizeProfileData(data, profile) {
     history: Array.isArray(data?.history) ? data.history : [],
     lastStudyDate: data?.lastStudyDate || ""
   };
+}
+
+function normalizePositions(value = {}) {
+  return {
+    vocabulary: normalizePosition(value.vocabulary),
+    article: normalizePosition(value.article),
+    nounVerb: normalizePosition(value.nounVerb)
+  };
+}
+
+function normalizePosition(value) {
+  const position = Number(value);
+  return Number.isFinite(position) && position > 0 ? Math.floor(position) : 0;
 }
 
 function normalizeMeaningProgress(savedProgress) {
@@ -433,11 +451,16 @@ function renderDashboard() {
   const levelPercent = getLevelProgressPercent(profile.coins, level);
   const challenge = profile.dailyChallenge;
   const streak = getDisplayStreak(profile);
+  profile.positions = normalizePositions(profile.positions);
   els.dashboardWelcome.textContent = `Welcome back, ${profile.name}`;
   els.dashboardWordsLearned.textContent = getWordsLearnedCount();
   els.dashboardWordsTotal.textContent = cards.length;
   els.dashboardArticlesLearned.textContent = articleSummary.known;
   els.dashboardNounsTotal.textContent = articleSummary.nouns;
+  els.resumeVocabularyPosition.textContent = formatResumePosition(profile.positions.vocabulary, cards.length);
+  els.resumeVocabularyTotal.textContent = cards.length;
+  els.resumeArticlePosition.textContent = formatResumePosition(profile.positions.article, articleSummary.nouns);
+  els.resumeArticleTotal.textContent = articleSummary.nouns;
   els.levelIcon.textContent = level.icon;
   els.levelName.textContent = level.name;
   els.levelCoins.textContent = normalizeCoinCount(profile.coins);
@@ -533,6 +556,11 @@ function getLevelProgressPercent(coinsValue, level) {
   return Math.min(((coins - level.min) / (level.next - level.min)) * 100, 100);
 }
 
+function formatResumePosition(position, total) {
+  if (!total) return 0;
+  return Math.min(normalizePosition(position) + 1, total);
+}
+
 function prepareProfileDailyState(profile) {
   const today = getTodayKey();
   profile.dailyChallenge = normalizeDailyChallenge(profile.dailyChallenge);
@@ -562,10 +590,24 @@ function getDisplayStreak(profile) {
 }
 
 function handleDashboardAction(action) {
+  if (action === "restart-vocabulary") {
+    resetSavedPosition("vocabulary");
+    openStudyRoute({ mode: "de-en", filter: "all", resume: false });
+    return;
+  }
+
+  if (action === "restart-articles") {
+    resetSavedPosition("article");
+    openStudyRoute({ mode: "article", filter: "allArticle", resume: false });
+    return;
+  }
+
   const routes = {
-    continue: { mode: "de-en", filter: "all" },
-    articles: { mode: "article", filter: "allArticle" },
-    "earn-coins": { mode: "article", filter: "allArticle" },
+    continue: { mode: "de-en", filter: "all", resume: true },
+    "resume-vocabulary": { mode: "de-en", filter: "all", resume: true },
+    articles: { mode: "article", filter: "allArticle", resume: true },
+    "earn-coins": { mode: "article", filter: "allArticle", resume: true },
+    "resume-articles": { mode: "article", filter: "allArticle", resume: true },
     "unknown-meanings": { mode: "de-en", filter: "unknownMeaning" },
     "unknown-articles": { mode: "article", filter: "unknownArticles" },
     search: { mode: "de-en", filter: "all", focusSearch: true },
@@ -573,17 +615,62 @@ function handleDashboardAction(action) {
   };
   const route = routes[action];
   if (!route) return;
+  openStudyRoute(route);
+}
 
+function openStudyRoute(route) {
   els.modeSelect.value = route.mode;
   updateFilterOptions();
   els.filterSelect.value = getValidFilterValue(route.filter);
   els.startSelect.value = "all";
-  currentIndex = 0;
   randomSessionKey = "";
   randomSessionIds = [];
   saveSettings();
   applyModeAndFilter();
+  if (route.resume) {
+    resumeSavedPosition();
+  } else {
+    currentIndex = 0;
+    saveCurrentPosition();
+  }
+  renderCard();
   showStudyView({ focusSearch: route.focusSearch, openStats: route.openStats });
+}
+
+function getPositionKey(mode = els.modeSelect.value) {
+  if (mode === "article" || mode === "article-quiz") return "article";
+  return "vocabulary";
+}
+
+function getSavedPosition(key = getPositionKey()) {
+  const profile = getCurrentProfile();
+  profile.positions = normalizePositions(profile.positions);
+  return normalizePosition(profile.positions[key]);
+}
+
+function resumeSavedPosition() {
+  if (!visibleCards.length) {
+    currentIndex = 0;
+    return;
+  }
+  currentIndex = clamp(getSavedPosition(), 0, visibleCards.length - 1);
+}
+
+function saveCurrentPosition() {
+  if (!currentProfileId) return;
+  const profile = getCurrentProfile();
+  profile.positions = normalizePositions(profile.positions);
+  profile.positions[getPositionKey()] = clamp(currentIndex, 0, Math.max(visibleCards.length - 1, 0));
+  saveProfileStore();
+}
+
+function resetSavedPosition(key = getPositionKey()) {
+  if (!currentProfileId) return;
+  const profile = getCurrentProfile();
+  profile.positions = normalizePositions(profile.positions);
+  profile.positions[key] = 0;
+  saveProfileStore();
+  if (currentView === "dashboard") renderDashboard();
 }
 
 function renderProfileCards() {
@@ -662,10 +749,11 @@ function bindEvents() {
   });
 
   els.modeSelect.addEventListener("change", () => {
-    currentIndex = 0;
     updateFilterOptions();
     saveSettings();
     applyModeAndFilter();
+    resumeSavedPosition();
+    renderCard();
   });
 
   els.filterSelect.addEventListener("change", () => {
@@ -1000,6 +1088,7 @@ function moveCard(direction) {
   selectedArticle = "";
   articleQuizAnswered = false;
   selectedQuizArticle = "";
+  saveCurrentPosition();
   renderCard();
 }
 
@@ -1022,6 +1111,7 @@ function rateCard(rating) {
   }
 
   applyModeAndFilter();
+  saveCurrentPosition();
 }
 
 function updateStats() {
@@ -1113,6 +1203,7 @@ function answerArticleQuiz(article) {
   recordDailyActivity("article");
   recordStudyHistory("article-quiz", card, status);
   saveArticleProgress();
+  saveCurrentPosition();
   updateStats();
   renderCard();
 }
@@ -1173,6 +1264,7 @@ function rateArticleCard(rating) {
   }
 
   applyModeAndFilter();
+  saveCurrentPosition();
 }
 
 function getArticleReviewLists() {
