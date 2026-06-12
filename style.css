@@ -281,7 +281,9 @@ h1 {
 .top-actions {
   display: flex;
   align-items: center;
+  flex-wrap: nowrap;
   gap: 8px;
+  white-space: nowrap;
 }
 
 .settings-menu {
@@ -1212,17 +1214,43 @@ select,
   }
 }
 
+@media (max-width: 480px) {
+  .top-actions {
+    flex-wrap: nowrap;
+    white-space: nowrap;
+  }
+}
+
 @media (max-width: 430px) {
   .app-shell {
     gap: 7px;
   }
 
   .topbar {
-    gap: 8px;
+    gap: 6px;
+  }
+
+  .brand {
+    gap: 7px;
+    min-width: 0;
+  }
+
+  .brand-mark {
+    width: 38px;
+    height: 38px;
+    flex: 0 0 38px;
+    font-size: 0.9rem;
+  }
+
+  .brand h1 {
+    max-width: 106px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
   }
 
   h1 {
-    font-size: 1rem;
+    font-size: 0.92rem;
   }
 
   .brand p {
@@ -1230,17 +1258,34 @@ select,
   }
 
   .ghost-button {
-    padding: 0 12px;
+    padding: 0 9px;
   }
 
   .top-actions {
-    flex-wrap: wrap;
-    gap: 6px;
+    flex-wrap: nowrap;
+    gap: 5px;
+    flex: 0 0 auto;
   }
 
   .top-actions .ghost-button {
-    min-height: 40px;
-    font-size: 0.82rem;
+    min-height: 38px;
+    font-size: 0.76rem;
+    line-height: 1;
+  }
+
+  #switchProfile {
+    font-size: 0;
+  }
+
+  #switchProfile::after {
+    content: "Profile";
+    font-size: 0.76rem;
+  }
+
+  .icon-button {
+    width: 38px;
+    min-height: 38px;
+    font-size: 1rem;
   }
 
   .profile-grid {
