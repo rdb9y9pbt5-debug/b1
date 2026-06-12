@@ -8,7 +8,7 @@
     <meta name="apple-mobile-web-app-title" content="B1 Karten">
     <meta name="apple-mobile-web-app-status-bar-style" content="default">
     <title>Goethe B1 Flashcards</title>
-    <link rel="stylesheet" href="style.css?v=12">
+    <link rel="stylesheet" href="style.css?v=13">
   </head>
   <body>
     <section class="lock-screen" id="lockScreen" aria-label="Password required">
@@ -123,42 +123,55 @@
       </section>
 
       <section class="stats-grid" aria-label="Progress statistics">
-        <article>
-          <span>Meaning Known</span>
-          <strong id="statMeaningKnown">0</strong>
+        <article class="summary-stat learned">
+          <span>Words learned</span>
+          <strong><span id="statWordsLearned">0</span> <small>/ <span id="statWordsTotal">0</span></small></strong>
         </article>
-        <article>
-          <span>Meaning Kind Of</span>
-          <strong id="statMeaningUnsure">0</strong>
+        <article class="summary-stat articles">
+          <span>Need to learn articles</span>
+          <strong id="statArticleGapSummary">0</strong>
         </article>
-        <article>
-          <span>Meaning Unknown</span>
-          <strong id="statMeaningUnknown">0</strong>
-        </article>
-        <article>
-          <span>Meaning Unrated</span>
-          <strong id="statMeaningUnrated">0</strong>
-        </article>
-        <article>
-          <span>Article Known</span>
-          <strong id="statArticleKnown">0</strong>
-        </article>
-        <article>
-          <span>Article Kind Of</span>
-          <strong id="statArticleUnsure">0</strong>
-        </article>
-        <article>
-          <span>Article Unknown</span>
-          <strong id="statArticleUnknown">0</strong>
-        </article>
-        <article>
-          <span>Article Unrated</span>
-          <strong id="statArticleUnrated">0</strong>
-        </article>
-        <article>
-          <span>Article Gap</span>
-          <strong id="statArticleGap">0</strong>
-        </article>
+        <details class="detailed-stats">
+          <summary>Detailed stats</summary>
+          <div class="detailed-stats-grid">
+            <article>
+              <span>Meaning Known</span>
+              <strong id="statMeaningKnown">0</strong>
+            </article>
+            <article>
+              <span>Meaning Kind Of</span>
+              <strong id="statMeaningUnsure">0</strong>
+            </article>
+            <article>
+              <span>Meaning Unknown</span>
+              <strong id="statMeaningUnknown">0</strong>
+            </article>
+            <article>
+              <span>Meaning Unrated</span>
+              <strong id="statMeaningUnrated">0</strong>
+            </article>
+            <article>
+              <span>Article Known</span>
+              <strong id="statArticleKnown">0</strong>
+            </article>
+            <article>
+              <span>Article Kind Of</span>
+              <strong id="statArticleUnsure">0</strong>
+            </article>
+            <article>
+              <span>Article Unknown</span>
+              <strong id="statArticleUnknown">0</strong>
+            </article>
+            <article>
+              <span>Article Unrated</span>
+              <strong id="statArticleUnrated">0</strong>
+            </article>
+            <article>
+              <span>Article Gap</span>
+              <strong id="statArticleGap">0</strong>
+            </article>
+          </div>
+        </details>
       </section>
 
       <section class="study-stage" aria-live="polite">
@@ -170,10 +183,6 @@
 
           <div class="question-area">
             <p class="eyebrow" id="promptLabel">German</p>
-            <div class="mastery-summary hidden" id="masterySummary" aria-label="Progress summary">
-              <span class="mastery-bubble learned" id="wordsLearnedBadge">Words learned: 0 <small>/ 0</small></span>
-              <span class="mastery-bubble articles" id="articleGapBadge">Need to learn articles: 0</span>
-            </div>
             <h2 id="questionText">Vocabulary loading</h2>
           </div>
 
@@ -235,6 +244,6 @@
       </footer>
     </main>
 
-    <script src="script.js?v=12"></script>
+    <script src="script.js?v=13"></script>
   </body>
 </html>
