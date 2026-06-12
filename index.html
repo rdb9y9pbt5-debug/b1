@@ -8,7 +8,7 @@
     <meta name="apple-mobile-web-app-title" content="B1 Karten">
     <meta name="apple-mobile-web-app-status-bar-style" content="default">
     <title>Goethe B1 Flashcards</title>
-    <link rel="stylesheet" href="style.css?v=8">
+    <link rel="stylesheet" href="style.css?v=9">
   </head>
   <body>
     <section class="lock-screen" id="lockScreen" aria-label="Password required">
@@ -105,6 +105,13 @@
             <option value="Z">Z</option>
           </select>
         </label>
+        <label>
+          <span>Order</span>
+          <select id="orderSelect" aria-label="Study order">
+            <option value="alphabetical">Alphabetical</option>
+            <option value="random">Random</option>
+          </select>
+        </label>
       </section>
 
       <section class="search-panel" aria-label="Search German vocabulary">
@@ -199,6 +206,10 @@
       </section>
 
       <footer class="action-bar">
+        <div class="nav-buttons">
+          <button class="ghost-button" id="previousCard" type="button">Previous</button>
+          <button class="ghost-button" id="nextCard" type="button">Next / Skip</button>
+        </div>
         <button class="primary-button" id="showAnswer" type="button">Show Answer</button>
         <div class="rating-buttons hidden" id="ratingButtons">
           <button class="know" type="button" data-rating="know">Know</button>
@@ -209,6 +220,6 @@
       </footer>
     </main>
 
-    <script src="script.js?v=8"></script>
+    <script src="script.js?v=9"></script>
   </body>
 </html>
