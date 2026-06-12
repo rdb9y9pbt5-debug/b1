@@ -8,7 +8,7 @@
     <meta name="apple-mobile-web-app-title" content="B1 Karten">
     <meta name="apple-mobile-web-app-status-bar-style" content="default">
     <title>Goethe B1 Flashcards</title>
-    <link rel="stylesheet" href="style.css?v=16">
+    <link rel="stylesheet" href="style.css?v=17">
   </head>
   <body>
     <section class="lock-screen" id="lockScreen" aria-label="Password required">
@@ -47,13 +47,43 @@
           </div>
         </div>
         <div class="top-actions">
+          <button class="ghost-button" id="homeButton" type="button">Home</button>
           <button class="ghost-button" id="switchProfile" type="button">Switch Profile</button>
           <button class="ghost-button" id="lockApp" type="button">Lock</button>
           <button class="ghost-button" id="resetProgress" type="button">Reset</button>
         </div>
       </header>
 
-      <section class="control-panel" aria-label="Study settings">
+      <section class="dashboard-screen" id="dashboardScreen" aria-label="Home dashboard">
+        <div class="dashboard-heading">
+          <div>
+            <p class="eyebrow">Home</p>
+            <h2 id="dashboardWelcome">Welcome back</h2>
+          </div>
+        </div>
+
+        <div class="dashboard-progress" aria-label="Dashboard progress">
+          <article class="dashboard-card learned">
+            <span>Words learned</span>
+            <strong><span id="dashboardWordsLearned">0</span> <small>/ <span id="dashboardWordsTotal">0</span></small></strong>
+          </article>
+          <article class="dashboard-card articles">
+            <span>Articles learned</span>
+            <strong><span id="dashboardArticlesLearned">0</span> <small>/ <span id="dashboardNounsTotal">0</span></small></strong>
+          </article>
+        </div>
+
+        <div class="dashboard-actions" aria-label="Dashboard actions">
+          <button type="button" data-dashboard-action="continue">Continue Vocabulary Study</button>
+          <button type="button" data-dashboard-action="articles">Practice Articles</button>
+          <button type="button" data-dashboard-action="unknown-meanings">Review Unknown Meanings</button>
+          <button type="button" data-dashboard-action="unknown-articles">Review Unknown Articles</button>
+          <button type="button" data-dashboard-action="search">Search Vocabulary</button>
+          <button type="button" data-dashboard-action="statistics">Statistics</button>
+        </div>
+      </section>
+
+      <section class="control-panel hidden" id="controlPanel" aria-label="Study settings">
         <label>
           <span>Mode</span>
           <select id="modeSelect">
@@ -114,7 +144,7 @@
         </label>
       </section>
 
-      <section class="search-panel" aria-label="Search German vocabulary">
+      <section class="search-panel hidden" id="searchPanel" aria-label="Search German vocabulary">
         <label>
           <span>Search German word</span>
           <input id="wordSearchInput" type="search" autocomplete="off" spellcheck="false" placeholder="fahr, Haus, Termin">
@@ -122,7 +152,7 @@
         <div class="search-results hidden" id="searchResults" aria-live="polite"></div>
       </section>
 
-      <section class="stats-grid" aria-label="Progress statistics">
+      <section class="stats-grid hidden" id="statsGrid" aria-label="Progress statistics">
         <article class="summary-stat learned">
           <span>Words learned</span>
           <strong><span id="statWordsLearned">0</span> <small>/ <span id="statWordsTotal">0</span></small></strong>
@@ -170,7 +200,7 @@
         </details>
       </section>
 
-      <section class="study-stage" aria-live="polite">
+      <section class="study-stage hidden" id="studyStage" aria-live="polite">
         <article class="flashcard" id="flashcard">
           <div class="card-meta">
             <span id="cardCounter">0 / 0</span>
@@ -221,7 +251,7 @@
         </article>
       </section>
 
-      <footer class="action-bar">
+      <footer class="action-bar hidden" id="actionBar">
         <div class="nav-buttons">
           <button class="ghost-button" id="previousCard" type="button">Previous</button>
           <button class="ghost-button" id="nextCard" type="button">Next / Skip</button>
@@ -235,6 +265,6 @@
       </footer>
     </main>
 
-    <script src="script.js?v=16"></script>
+    <script src="script.js?v=17"></script>
   </body>
 </html>
