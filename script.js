@@ -62,7 +62,9 @@ const els = {
   cardCounter: document.querySelector("#cardCounter"),
   cardMode: document.querySelector("#cardMode"),
   promptLabel: document.querySelector("#promptLabel"),
-  masteryBadge: document.querySelector("#masteryBadge"),
+  masterySummary: document.querySelector("#masterySummary"),
+  wordsLearnedBadge: document.querySelector("#wordsLearnedBadge"),
+  articleGapBadge: document.querySelector("#articleGapBadge"),
   questionText: document.querySelector("#questionText"),
   articleGuess: document.querySelector("#articleGuess"),
   articleQuiz: document.querySelector("#articleQuiz"),
@@ -688,13 +690,12 @@ function renderCard() {
 
   if (!card) {
     els.promptLabel.textContent = "No cards";
-    els.masteryBadge.className = "mastery-badge hidden";
-    els.masteryBadge.textContent = "";
+    els.masterySummary.classList.add("hidden");
     els.questionText.textContent = "Nothing to study";
     return;
   }
 
-  renderMasteryBadge(card, mode);
+  renderMasterySummary(mode);
 
   if (mode === "en-de") {
     els.promptLabel.textContent = "English";
@@ -866,34 +867,24 @@ function getArticleStatus(card) {
   return normalizeArticleStatus(entry?.articleStatus || entry?.rating);
 }
 
-function renderMasteryBadge(card, mode) {
-  const badge = getMasteryBadge(card);
-  els.masteryBadge.textContent = badge.label;
-  els.masteryBadge.className = `mastery-badge ${badge.className}`;
-  els.masteryBadge.classList.toggle("hidden", mode === "article-quiz");
+function renderMasterySummary(mode) {
+  const summary = getMasterySummary();
+  els.wordsLearnedBadge.innerHTML = `Words learned: ${summary.wordsLearned} <small>/ ${summary.total}</small>`;
+  els.articleGapBadge.textContent = `Need to learn articles: ${summary.articleGap}`;
+  els.masterySummary.classList.toggle("hidden", mode === "article-quiz");
 }
 
-function getMasteryBadge(card) {
-  const meaningStatus = getMeaningStatus(card);
-  const meaningKnown = meaningStatus === "known";
-
-  if (!card.isNoun) {
-    return meaningKnown
-      ? { label: "✓ Known", className: "known" }
-      : { label: "New / not mastered", className: "new" };
-  }
-
-  const articleKnown = getArticleStatus(card) === "known";
-  if (meaningKnown && articleKnown) {
-    return { label: "✓ Fully known", className: "fully-known" };
-  }
-  if (meaningKnown) {
-    return { label: "✓ Meaning known · ? article unknown", className: "meaning-known" };
-  }
-  if (articleKnown) {
-    return { label: "✓ Article known · ? meaning unknown", className: "article-known" };
-  }
-  return { label: "New / not mastered", className: "new" };
+function getMasterySummary() {
+  return cards.reduce(
+    (summary, card) => {
+      const meaningKnown = getMeaningStatus(card) === "known";
+      const articleKnown = !card.isNoun || getArticleStatus(card) === "known";
+      if (meaningKnown && articleKnown) summary.wordsLearned += 1;
+      if (card.isNoun && meaningKnown && !articleKnown) summary.articleGap += 1;
+      return summary;
+    },
+    { wordsLearned: 0, articleGap: 0, total: cards.length }
+  );
 }
 
 function updateRatingButtonLabels(mode) {
