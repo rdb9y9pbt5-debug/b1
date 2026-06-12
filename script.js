@@ -24,7 +24,6 @@ const STANDARD_FILTERS = [
 const ARTICLE_FILTERS = [
   ["allArticle", "All nouns"],
   ["knownArticles", "Known article"],
-  ["unsureArticles", "Kind of known article"],
   ["unknownArticles", "Unknown article"],
   ["unratedArticles", "Unrated article"],
   ["articleGap", "Article gap"]
@@ -58,7 +57,6 @@ const els = {
   statMeaningUnknown: document.querySelector("#statMeaningUnknown"),
   statMeaningUnrated: document.querySelector("#statMeaningUnrated"),
   statArticleKnown: document.querySelector("#statArticleKnown"),
-  statArticleUnsure: document.querySelector("#statArticleUnsure"),
   statArticleUnknown: document.querySelector("#statArticleUnknown"),
   statArticleUnrated: document.querySelector("#statArticleUnrated"),
   statArticleGap: document.querySelector("#statArticleGap"),
@@ -70,7 +68,6 @@ const els = {
   articleQuiz: document.querySelector("#articleQuiz"),
   articleQuizOptions: document.querySelector("#articleQuizOptions"),
   articleQuizResult: document.querySelector("#articleQuizResult"),
-  articleRatingButtons: document.querySelector("#articleRatingButtons"),
   answerPanel: document.querySelector("#answerPanel"),
   answerArticle: document.querySelector("#answerArticle"),
   answerMeaning: document.querySelector("#answerMeaning"),
@@ -255,8 +252,7 @@ function normalizeMeaningStatus(value) {
 
 function normalizeArticleStatus(value) {
   if (value === "known") return "known";
-  if (value === "kindOf" || value === "unsure") return "unsure";
-  if (value === "unknown") return "unknown";
+  if (value === "kindOf" || value === "unsure" || value === "unknown") return "unknown";
   return "unrated";
 }
 
@@ -442,12 +438,6 @@ function bindEvents() {
     answerArticleQuiz(button.dataset.quizArticle);
   });
 
-  els.articleRatingButtons.addEventListener("click", (event) => {
-    const button = event.target.closest("button[data-article-rating]");
-    if (!button || !visibleCards[currentIndex]) return;
-    rateArticleCard(button.dataset.articleRating);
-  });
-
   els.switchProfile.addEventListener("click", showProfileScreen);
 
   els.lockApp.addEventListener("click", () => {
@@ -550,7 +540,6 @@ function applyModeAndFilter() {
     if (mode === "article-quiz" || mode === "article") {
       if (!card.isNoun) return false;
       if (filter === "knownArticles" && articleStatus !== "known") return false;
-      if (filter === "unsureArticles" && articleStatus !== "unsure") return false;
       if (filter === "unknownArticles" && articleStatus !== "unknown") return false;
       if (filter === "unratedArticles" && articleStatus !== "unrated") return false;
       if (filter === "articleGap" && !(meaningStatus === "known" && articleStatus !== "known")) return false;
@@ -767,7 +756,7 @@ function updateStats() {
       if (getMeaningStatus(card) === "known" && getArticleStatus(card) !== "known") total.gap += 1;
       return total;
     },
-    { known: 0, unsure: 0, unknown: 0, unrated: 0, gap: 0 }
+    { known: 0, unknown: 0, unrated: 0, gap: 0 }
   );
 
   els.statMeaningKnown.textContent = meaning.known;
@@ -775,7 +764,6 @@ function updateStats() {
   els.statMeaningUnknown.textContent = meaning.unknown;
   els.statMeaningUnrated.textContent = meaning.unrated;
   els.statArticleKnown.textContent = articles.known;
-  els.statArticleUnsure.textContent = articles.unsure;
   els.statArticleUnknown.textContent = articles.unknown;
   els.statArticleUnrated.textContent = articles.unrated;
   els.statArticleGap.textContent = articles.gap;
@@ -792,7 +780,7 @@ function renderArticleQuiz(card) {
   els.articleQuizResult.innerHTML = isCorrect
     ? `
       <span class="quiz-result-label">Correct</span>
-      <span class="quiz-result-answer">${escapeHtml(fullAnswer)}</span>
+      <span class="quiz-result-answer">Correct answer: ${escapeHtml(fullAnswer)}</span>
       <span class="quiz-result-meaning">${escapeHtml(card.english)}</span>
     `
     : `
@@ -803,8 +791,6 @@ function renderArticleQuiz(card) {
   els.articleQuizResult.classList.toggle("hidden", !articleQuizAnswered);
   els.articleQuizResult.classList.toggle("success", articleQuizAnswered && isCorrect);
   els.articleQuizResult.classList.toggle("error", articleQuizAnswered && !isCorrect);
-  els.articleRatingButtons.classList.toggle("hidden", !articleQuizAnswered);
-
   els.articleQuizOptions.querySelectorAll("button").forEach((button) => {
     const article = button.dataset.quizArticle;
     button.disabled = articleQuizAnswered;
@@ -815,8 +801,18 @@ function renderArticleQuiz(card) {
 }
 
 function answerArticleQuiz(article) {
+  const card = visibleCards[currentIndex];
+  if (!card) return;
   selectedQuizArticle = article;
   articleQuizAnswered = true;
+  const status = article === card.article ? "known" : "unknown";
+  articleProgress[card.id] = {
+    articleStatus: status,
+    updatedAt: new Date().toISOString()
+  };
+  recordStudyHistory("article-quiz", card, status);
+  saveArticleProgress();
+  updateStats();
   renderCard();
 }
 
@@ -842,12 +838,11 @@ function getArticleReviewLists() {
       if (!card.isNoun) return lists;
       const rating = getArticleStatus(card);
       if (rating === "known") lists.known.push(card);
-      else if (rating === "unsure") lists.kindOf.push(card);
       else if (rating === "unknown") lists.unknown.push(card);
       else lists.unrated.push(card);
       return lists;
     },
-    { known: [], kindOf: [], unknown: [], unrated: [] }
+    { known: [], unknown: [], unrated: [] }
   );
 }
 
@@ -878,20 +873,21 @@ function getWordsLearnedCount() {
 function updateRatingButtonLabels(mode) {
   const labels = mode === "article"
     ? [
-      ["known", "I know the article"],
-      ["unsure", "I kind of know the article"],
-      ["unknown", "I don’t know the article"]
+      ["known", "I know the article", false],
+      ["unknown", "I don’t know the article", false],
+      ["unknown", "", true]
     ]
     : [
-      ["known", "I know the meaning"],
-      ["unsure", "I kind of know the meaning"],
-      ["unknown", "I don’t know the meaning"]
+      ["known", "I know the meaning", false],
+      ["unsure", "I kind of know the meaning", false],
+      ["unknown", "I don’t know the meaning", false]
     ];
 
   els.ratingButtons.querySelectorAll("button[data-rating]").forEach((button, index) => {
-    const [value, label] = labels[index];
+    const [value, label, hidden] = labels[index];
     button.dataset.rating = value;
     button.textContent = label;
+    button.classList.toggle("hidden", hidden);
   });
 }
 
