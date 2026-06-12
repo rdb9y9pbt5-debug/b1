@@ -358,16 +358,30 @@ select,
 
 .stats-grid {
   display: grid;
-  grid-template-columns: repeat(9, 1fr);
+  grid-template-columns: repeat(2, minmax(0, 1fr));
   gap: 8px;
 }
 
-.stats-grid article {
+.stats-grid article,
+.detailed-stats {
   min-width: 0;
   border: 1px solid rgba(222, 216, 203, 0.86);
   border-radius: 8px;
   background: rgba(255, 253, 248, 0.72);
   padding: 9px 11px;
+}
+
+.stats-grid .summary-stat {
+  border-radius: 999px;
+  padding: 8px 14px;
+}
+
+.summary-stat.learned {
+  background: var(--green-soft);
+}
+
+.summary-stat.articles {
+  background: var(--amber-soft);
 }
 
 .stats-grid span {
@@ -381,6 +395,45 @@ select,
   display: block;
   margin-top: 2px;
   font-size: clamp(1rem, 2vw, 1.24rem);
+}
+
+.summary-stat small {
+  color: var(--muted);
+  font-size: 0.72em;
+  font-weight: 800;
+}
+
+.summary-stat strong span,
+.summary-stat small span {
+  display: inline;
+  color: inherit;
+  font-size: inherit;
+}
+
+.detailed-stats {
+  grid-column: 1 / -1;
+  padding: 0;
+}
+
+.detailed-stats summary {
+  min-height: 42px;
+  padding: 11px 14px;
+  color: var(--muted);
+  cursor: pointer;
+  font-size: 0.82rem;
+  font-weight: 900;
+}
+
+.detailed-stats-grid {
+  border-top: 1px solid rgba(222, 216, 203, 0.86);
+  display: grid;
+  grid-template-columns: repeat(9, 1fr);
+  gap: 8px;
+  padding: 8px;
+}
+
+.detailed-stats-grid article {
+  background: rgba(255, 253, 248, 0.82);
 }
 
 .study-stage {
@@ -426,40 +479,6 @@ select,
   font-size: clamp(0.9rem, 2vw, 1.05rem);
   font-weight: 900;
   text-transform: uppercase;
-}
-
-.mastery-summary {
-  display: flex;
-  justify-content: center;
-  flex-wrap: wrap;
-  gap: 6px;
-  max-width: min(100%, 34rem);
-}
-
-.mastery-bubble {
-  border: 1px solid rgba(222, 216, 203, 0.92);
-  border-radius: 999px;
-  padding: 6px 11px;
-  font-size: clamp(0.78rem, 1.7vw, 0.92rem);
-  font-weight: 900;
-  line-height: 1.15;
-  white-space: nowrap;
-}
-
-.mastery-bubble small {
-  color: var(--muted);
-  font-size: 0.78em;
-  font-weight: 800;
-}
-
-.mastery-bubble.learned {
-  background: var(--green-soft);
-  color: var(--green);
-}
-
-.mastery-bubble.articles {
-  background: var(--amber-soft);
-  color: var(--amber);
 }
 
 #questionText {
@@ -724,7 +743,7 @@ select,
   }
 
   .stats-grid {
-    grid-template-columns: repeat(3, minmax(0, 1fr));
+    grid-template-columns: repeat(2, minmax(0, 1fr));
     gap: 5px;
   }
 
@@ -735,6 +754,10 @@ select,
 
   .stats-grid span {
     font-size: 0.66rem;
+  }
+
+  .detailed-stats-grid {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
   }
 
   .flashcard {
