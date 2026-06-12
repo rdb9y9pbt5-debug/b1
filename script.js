@@ -377,6 +377,7 @@ function handleDashboardAction(action) {
   const routes = {
     continue: { mode: "de-en", filter: "all" },
     articles: { mode: "article", filter: "allArticle" },
+    "earn-coins": { mode: "article", filter: "allArticle" },
     "unknown-meanings": { mode: "de-en", filter: "unknownMeaning" },
     "unknown-articles": { mode: "article", filter: "unknownArticles" },
     search: { mode: "de-en", filter: "all", focusSearch: true },
