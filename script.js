@@ -204,6 +204,7 @@ let nounVerbQuizState = {
   currentChoices: []
 };
 let recentNounVerbQuestionIds = [];
+let recentNounVerbNouns = [];
 let progress = {};
 let articleProgress = {};
 let nounVerbProgress = {};
@@ -2100,9 +2101,10 @@ function generateNounVerbQuestion(reason, targetIndex = nounVerbCurrentIndex) {
     hasAnswered: false,
     currentChoices: buildNounVerbChoices(pair)
   };
-  rememberNounVerbQuestion(pair.id);
+  rememberNounVerbQuestion(pair);
   console.log("Noun-verb question generated", {
     currentQuestionId: pair.id,
+    noun: pair.noun,
     reason,
     phrase: pair.phrase
   });
@@ -2240,34 +2242,65 @@ function applyNounVerbSmartOrder() {
 function getNextNounVerbIndex() {
   if (visibleNounVerbPairs.length < 2) return nounVerbCurrentIndex;
   const recentIds = new Set(recentNounVerbQuestionIds);
+  const recentNouns = new Set(recentNounVerbNouns);
+  const veryRecentIds = new Set(recentNounVerbQuestionIds.slice(0, 5));
   const currentId = visibleNounVerbPairs[nounVerbCurrentIndex]?.id;
-  let candidateIndex = -1;
+  const currentNoun = getNounVerbNounKey(visibleNounVerbPairs[nounVerbCurrentIndex]);
+  const candidates = visibleNounVerbPairs
+    .map((pair, index) => ({ pair, index }))
+    .filter(({ pair }) => pair.id !== currentId);
 
-  for (let offset = 1; offset < visibleNounVerbPairs.length; offset += 1) {
-    const index = (nounVerbCurrentIndex + offset) % visibleNounVerbPairs.length;
-    const pair = visibleNounVerbPairs[index];
-    if (pair.id !== currentId && !recentIds.has(pair.id)) {
-      candidateIndex = index;
-      break;
-    }
-  }
+  const freshQuestionAndNoun = candidates.filter(({ pair }) => {
+    const nounKey = getNounVerbNounKey(pair);
+    return !recentIds.has(pair.id) && nounKey !== currentNoun && !recentNouns.has(nounKey);
+  });
+  const freshQuestion = candidates.filter(({ pair }) => !recentIds.has(pair.id));
+  const notVeryRecent = candidates.filter(({ pair }) => !veryRecentIds.has(pair.id));
+  const sameNounButNotCurrent = candidates.filter(({ pair }) => getNounVerbNounKey(pair) !== currentNoun);
 
-  if (candidateIndex >= 0) return candidateIndex;
-
-  for (let offset = 1; offset < visibleNounVerbPairs.length; offset += 1) {
-    const index = (nounVerbCurrentIndex + offset) % visibleNounVerbPairs.length;
-    if (visibleNounVerbPairs[index].id !== currentId) return index;
-  }
-
-  return nounVerbCurrentIndex;
+  return pickNounVerbCandidateIndex(freshQuestionAndNoun)
+    ?? pickNounVerbCandidateIndex(freshQuestion)
+    ?? pickNounVerbCandidateIndex(notVeryRecent)
+    ?? pickNounVerbCandidateIndex(sameNounButNotCurrent)
+    ?? pickNounVerbCandidateIndex(candidates)
+    ?? nounVerbCurrentIndex;
 }
 
-function rememberNounVerbQuestion(pairId) {
+function pickNounVerbCandidateIndex(candidates) {
+  if (!candidates.length) return null;
+  const bestRank = Math.min(...candidates.map(({ pair }) => getNounVerbPriorityRank(pair)));
+  const bestCandidates = candidates.filter(({ pair }) => getNounVerbPriorityRank(pair) === bestRank);
+  const weightedCandidates = shuffleCards(bestCandidates)
+    .sort((first, second) => getNounVerbRecentAge(second.pair.id) - getNounVerbRecentAge(first.pair.id));
+  return weightedCandidates[0]?.index ?? null;
+}
+
+function getNounVerbRecentAge(pairId) {
+  const index = recentNounVerbQuestionIds.indexOf(pairId);
+  return index === -1 ? recentNounVerbQuestionIds.length + 1 : index;
+}
+
+function getNounVerbNounKey(pair) {
+  return getSortKey(pair?.noun || "");
+}
+
+function rememberNounVerbQuestion(pairOrId) {
+  const pair = typeof pairOrId === "string"
+    ? nounVerbPairs.find((item) => item.id === pairOrId)
+    : pairOrId;
+  const pairId = pair?.id || "";
   if (!pairId) return;
+  const nounKey = getNounVerbNounKey(pair);
   recentNounVerbQuestionIds = [
     pairId,
     ...recentNounVerbQuestionIds.filter((id) => id !== pairId)
-  ].slice(0, 5);
+  ].slice(0, 10);
+  if (nounKey) {
+    recentNounVerbNouns = [
+      nounKey,
+      ...recentNounVerbNouns.filter((noun) => noun !== nounKey)
+    ].slice(0, 10);
+  }
 }
 
 function applyNounVerbPriorityOrder(pairList) {
@@ -2285,13 +2318,21 @@ function applyNounVerbPriorityOrder(pairList) {
   });
 
   wrongRecent.sort((first, second) => getNounVerbLastWrongMs(second) - getNounVerbLastWrongMs(first));
-  newPairs.sort(compareNounVerbPairs);
-  learned.sort((first, second) => getNounVerbProgressEntry(first).correctCount - getNounVerbProgressEntry(second).correctCount || compareNounVerbPairs(first, second));
-  mastered.sort((first, second) => getNounVerbLastAnsweredMs(first) - getNounVerbLastAnsweredMs(second) || compareNounVerbPairs(first, second));
+  const randomizedNewPairs = shuffleCards(newPairs);
+  const randomizedLearned = shuffleCards(learned).sort((first, second) => getNounVerbProgressEntry(first).correctCount - getNounVerbProgressEntry(second).correctCount);
+  const randomizedMastered = shuffleCards(mastered).sort((first, second) => getNounVerbLastAnsweredMs(first) - getNounVerbLastAnsweredMs(second));
 
-  const mainReview = [...wrongRecent, ...newPairs, ...learned];
-  if (!mainReview.length) return mastered;
-  return [...mainReview, ...mastered.filter((_, index) => index % 6 === 0)];
+  const mainReview = [...wrongRecent, ...randomizedNewPairs, ...randomizedLearned];
+  if (!mainReview.length) return randomizedMastered;
+  return [...mainReview, ...randomizedMastered.filter((_, index) => index % 6 === 0)];
+}
+
+function getNounVerbPriorityRank(pair) {
+  if (isNounVerbWrongRecently(pair)) return 0;
+  const status = getNounVerbStatus(pair);
+  if (status === "new") return 1;
+  if (status === "learned") return 2;
+  return 3;
 }
 
 function compareNounVerbPairs(first, second) {
