@@ -19,8 +19,62 @@ const DEFAULT_PROFILES = [
 ];
 
 const LEADERBOARD_PROFILE_IDS = ["mineko", "sami", "mai"];
-const DAILY_CHALLENGE_GOAL = 20;
-const DAILY_CHALLENGE_REWARD = 10;
+const DAILY_CHALLENGES = [
+  {
+    id: "article-apprentice",
+    icon: "🏷",
+    name: "Article Apprentice",
+    description: "20 article questions",
+    metric: "articleQuestions",
+    goal: 20,
+    reward: 10
+  },
+  {
+    id: "article-expert",
+    icon: "🏷",
+    name: "Article Expert",
+    description: "50 article questions",
+    metric: "articleQuestions",
+    goal: 50,
+    reward: 25
+  },
+  {
+    id: "accuracy-challenge",
+    icon: "🎯",
+    name: "Accuracy Challenge",
+    description: "10 correct article answers",
+    metric: "correctArticleAnswers",
+    goal: 10,
+    reward: 15
+  },
+  {
+    id: "consistency-challenge",
+    icon: "🔥",
+    name: "Consistency Challenge",
+    description: "30 article questions",
+    metric: "articleQuestions",
+    goal: 30,
+    reward: 15
+  },
+  {
+    id: "quick-practice",
+    icon: "⚡",
+    name: "Quick Practice",
+    description: "15 article questions",
+    metric: "articleQuestions",
+    goal: 15,
+    reward: 8
+  },
+  {
+    id: "marathon-challenge",
+    icon: "🏆",
+    name: "Marathon Challenge",
+    description: "75 article questions",
+    metric: "articleQuestions",
+    goal: 75,
+    reward: 40
+  }
+];
 const STREAK_ACTIVITY_GOAL = 10;
 const LEVEL_UP_BONUS = 25;
 const FAMILY_MILESTONES = [
@@ -121,6 +175,7 @@ const els = {
   levelCelebrationClose: document.querySelector("#levelCelebrationClose"),
   challengeTitle: document.querySelector("#challengeTitle"),
   challengeReward: document.querySelector("#challengeReward"),
+  challengeDescription: document.querySelector("#challengeDescription"),
   challengeStatus: document.querySelector("#challengeStatus"),
   challengeProgressFill: document.querySelector("#challengeProgressFill"),
   streakCurrent: document.querySelector("#streakCurrent"),
@@ -496,9 +551,12 @@ function normalizeCoinCount(value) {
 }
 
 function normalizeDailyChallenge(value) {
+  const date = typeof value?.date === "string" ? value.date : getTodayKey();
   return {
-    date: typeof value?.date === "string" ? value.date : getTodayKey(),
+    date,
+    challengeId: typeof value?.challengeId === "string" ? value.challengeId : "",
     articleQuestions: normalizeCounter(value?.articleQuestions),
+    correctArticleAnswers: normalizeCounter(value?.correctArticleAnswers),
     completed: Boolean(value?.completed)
   };
 }
@@ -698,7 +756,9 @@ function pickLatestDailyChallenge(localChallenge, remoteChallenge) {
   if (remoteDate > localDate) return remoteChallenge;
   return {
     date: localDate || remoteDate || getTodayKey(),
+    challengeId: localChallenge?.challengeId || remoteChallenge?.challengeId || getDailyChallengeForDate(localDate || remoteDate || getTodayKey()).id,
     articleQuestions: Math.max(normalizeCounter(localChallenge?.articleQuestions), normalizeCounter(remoteChallenge?.articleQuestions)),
+    correctArticleAnswers: Math.max(normalizeCounter(localChallenge?.correctArticleAnswers), normalizeCounter(remoteChallenge?.correctArticleAnswers)),
     completed: Boolean(localChallenge?.completed || remoteChallenge?.completed)
   };
 }
@@ -903,12 +963,17 @@ function renderDashboard() {
   els.dashboardFamilyProgressText.textContent = familySummary.nextLevel.next
     ? `${familySummary.totalCoins} / ${familySummary.nextLevel.next} toward ${familySummary.nextFamilyLevel.icon} ${familySummary.nextFamilyLevel.name}`
     : "Max family level reached";
-  els.challengeTitle.textContent = challenge.completed ? "✅ Complete" : "🎯 Today's Challenge";
-  els.challengeReward.textContent = challenge.completed ? "+10 Coins Earned" : `Reward: +${DAILY_CHALLENGE_REWARD} coins`;
-  els.challengeStatus.textContent = challenge.completed
-    ? `${DAILY_CHALLENGE_GOAL} / ${DAILY_CHALLENGE_GOAL}`
-    : `${Math.min(challenge.articleQuestions, DAILY_CHALLENGE_GOAL)} / ${DAILY_CHALLENGE_GOAL}`;
-  els.challengeProgressFill.style.width = `${Math.min((challenge.articleQuestions / DAILY_CHALLENGE_GOAL) * 100, 100)}%`;
+  const dailyChallenge = getDailyChallengeForDate(challenge.date);
+  const challengeProgress = getDailyChallengeProgress(challenge, dailyChallenge);
+  els.challengeTitle.textContent = challenge.completed
+    ? `✅ ${dailyChallenge.name}`
+    : `${dailyChallenge.icon} ${dailyChallenge.name}`;
+  els.challengeDescription.textContent = dailyChallenge.description;
+  els.challengeReward.textContent = challenge.completed
+    ? `+${dailyChallenge.reward} Coins Earned`
+    : `Reward: +${dailyChallenge.reward} coins`;
+  els.challengeStatus.textContent = `${challengeProgress.current} / ${dailyChallenge.goal}`;
+  els.challengeProgressFill.style.width = `${Math.min((challengeProgress.current / dailyChallenge.goal) * 100, 100)}%`;
   els.streakCurrent.textContent = `${streak.current} ${streak.current === 1 ? "Day" : "Days"}`;
   els.streakBest.textContent = `Best: ${streak.best} days`;
   renderAvatar(els.dashboardAvatar, profile);
@@ -1028,11 +1093,18 @@ function formatResumePosition(position, total) {
 
 function prepareProfileDailyState(profile) {
   const today = getTodayKey();
+  const todayChallenge = getDailyChallengeForDate(today);
   profile.dailyChallenge = normalizeDailyChallenge(profile.dailyChallenge);
   profile.streak = normalizeStreak(profile.streak);
 
-  if (profile.dailyChallenge.date !== today) {
-    profile.dailyChallenge = { date: today, articleQuestions: 0, completed: false };
+  if (profile.dailyChallenge.date !== today || profile.dailyChallenge.challengeId !== todayChallenge.id) {
+    profile.dailyChallenge = {
+      date: today,
+      challengeId: todayChallenge.id,
+      articleQuestions: 0,
+      correctArticleAnswers: 0,
+      completed: false
+    };
   }
 
   if (profile.streak.activityDate !== today) {
@@ -1835,7 +1907,7 @@ function answerArticleQuiz(article) {
   if (isCorrect) {
     awardCoins(1);
   }
-  recordDailyActivity("article");
+  recordDailyActivity("article", { isCorrect });
   recordStudyHistory("article-quiz", card, isCorrect ? "correct" : "wrong");
   saveArticleProgress();
   saveCurrentPosition();
@@ -1926,17 +1998,20 @@ function showFamilyLevelCelebration(level) {
   els.levelCelebration.classList.remove("hidden");
 }
 
-function recordDailyActivity(type) {
+function recordDailyActivity(type, details = {}) {
   if (!currentProfileId) return;
   const profile = getCurrentProfile();
   prepareProfileDailyState(profile);
 
   if (type === "article") {
+    const dailyChallenge = getDailyChallengeForDate(profile.dailyChallenge.date);
     profile.dailyChallenge.articleQuestions += 1;
+    if (details.isCorrect) profile.dailyChallenge.correctArticleAnswers += 1;
     profile.streak.articleQuestions += 1;
-    if (!profile.dailyChallenge.completed && profile.dailyChallenge.articleQuestions >= DAILY_CHALLENGE_GOAL) {
+    const challengeProgress = getDailyChallengeProgress(profile.dailyChallenge, dailyChallenge);
+    if (!profile.dailyChallenge.completed && challengeProgress.raw >= dailyChallenge.goal) {
       profile.dailyChallenge.completed = true;
-      awardCoins(DAILY_CHALLENGE_REWARD);
+      awardCoins(dailyChallenge.reward);
     }
   }
 
@@ -2611,6 +2686,30 @@ function getTodayKey() {
   const month = String(now.getMonth() + 1).padStart(2, "0");
   const day = String(now.getDate()).padStart(2, "0");
   return `${year}-${month}-${day}`;
+}
+
+function getDailyChallengeForDate(date = getTodayKey()) {
+  const index = getStableDailyChallengeIndex(date);
+  return DAILY_CHALLENGES[index] || DAILY_CHALLENGES[0];
+}
+
+function getStableDailyChallengeIndex(date) {
+  const key = String(date || getTodayKey());
+  let hash = 0;
+  for (let index = 0; index < key.length; index += 1) {
+    hash = (hash * 31 + key.charCodeAt(index)) >>> 0;
+  }
+  return hash % DAILY_CHALLENGES.length;
+}
+
+function getDailyChallengeProgress(progress, challenge = getDailyChallengeForDate(progress?.date)) {
+  const current = challenge.metric === "correctArticleAnswers"
+    ? normalizeCounter(progress?.correctArticleAnswers)
+    : normalizeCounter(progress?.articleQuestions);
+  return {
+    current: Math.min(current, challenge.goal),
+    raw: current
+  };
 }
 
 function getDayDistance(fromDate, toDate) {
