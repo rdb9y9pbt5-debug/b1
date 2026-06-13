@@ -19,6 +19,56 @@ const DEFAULT_PROFILES = [
 ];
 
 const LEADERBOARD_PROFILE_IDS = ["mineko", "sami", "mai"];
+const ACHIEVEMENTS = [
+  {
+    id: "first-correct-answer",
+    icon: "✅",
+    name: "First Correct Answer",
+    description: "Answer any quiz question correctly.",
+    reward: 5,
+    scope: "profile"
+  },
+  {
+    id: "first-100-coins",
+    icon: "🪙",
+    name: "First 100 Coins",
+    description: "Reach 100 total coins.",
+    reward: 10,
+    scope: "profile"
+  },
+  {
+    id: "ten-day-streak",
+    icon: "🔥",
+    name: "10-Day Streak",
+    description: "Reach a 10-day streak.",
+    reward: 25,
+    scope: "profile"
+  },
+  {
+    id: "hundred-articles-mastered",
+    icon: "🏷",
+    name: "100 Articles Mastered",
+    description: "Master 100 article nouns.",
+    reward: 25,
+    scope: "profile"
+  },
+  {
+    id: "family-1000-coins",
+    icon: "🏦",
+    name: "1000 Family Coins",
+    description: "Reach 1000 family coins together.",
+    reward: 0,
+    scope: "family"
+  },
+  {
+    id: "noun-verb-explorer",
+    icon: "🔗",
+    name: "Noun-Verb Explorer",
+    description: "Answer 20 Noun-Verb questions correctly.",
+    reward: 20,
+    scope: "profile"
+  }
+];
 const DAILY_CHALLENGES = [
   {
     id: "article-apprentice",
@@ -151,6 +201,7 @@ const els = {
   dashboardNounVerbNew: document.querySelector("#dashboardNounVerbNew"),
   dashboardNounVerbLearned: document.querySelector("#dashboardNounVerbLearned"),
   dashboardNounVerbMastered: document.querySelector("#dashboardNounVerbMastered"),
+  achievementsGrid: document.querySelector("#achievementsGrid"),
   challengeArticleNew: document.querySelector("#challengeArticleNew"),
   challengeArticleLearned: document.querySelector("#challengeArticleLearned"),
   challengeArticleMastered: document.querySelector("#challengeArticleMastered"),
@@ -264,6 +315,7 @@ let progress = {};
 let articleProgress = {};
 let nounVerbProgress = {};
 let profileStore = null;
+let checkingAchievements = false;
 let currentProfileId = "";
 let searchResults = [];
 let randomSessionKey = "";
@@ -389,6 +441,7 @@ function loadProfileStore() {
     store.profiles[profile.id] = normalizeProfileData(store.profiles[profile.id], profile);
   });
   store.familyLevelsReached = normalizeFamilyLevelsReached(store.familyLevelsReached, store.profiles);
+  store.familyAchievementsUnlocked = normalizeAchievementList(store.familyAchievementsUnlocked);
 
   if (!store.migratedLegacyProgress) {
     const legacyProgress = readStorageObject(STORAGE_KEY);
@@ -418,6 +471,7 @@ function createProfileStore() {
     currentProfile: "",
     migratedLegacyProgress: false,
     familyLevelsReached: [],
+    familyAchievementsUnlocked: [],
     profiles: DEFAULT_PROFILES.reduce((profiles, profile) => {
       profiles[profile.id] = normalizeProfileData(null, profile);
       return profiles;
@@ -435,6 +489,7 @@ function normalizeProfileData(data, profile) {
     levelBonusesAwarded: normalizeLevelBonuses(data?.levelBonusesAwarded, data?.coins),
     dailyChallenge: normalizeDailyChallenge(data?.dailyChallenge),
     streak: normalizeStreak(data?.streak),
+    achievementsUnlocked: normalizeAchievementList(data?.achievementsUnlocked || data?.achievements),
     decks: data?.decks || {},
     progress: normalizeMeaningProgress(data?.progress || {}),
     articleProgress: normalizeArticleProgress(data?.articleProgress || {}),
@@ -585,6 +640,10 @@ function normalizeLevelBonuses(savedLevels, coinValue) {
     .map((level) => getLevelId(level));
 }
 
+function normalizeAchievementList(value) {
+  return Array.from(new Set((Array.isArray(value) ? value : []).map(String).filter(Boolean)));
+}
+
 function normalizeFamilyLevelsReached(savedLevels, profiles) {
   if (Array.isArray(savedLevels)) return savedLevels.map(String);
   const familyCoins = getFamilyCoinTotal(profiles);
@@ -696,6 +755,12 @@ function mergeProfileStores(localStore, remoteStore) {
       ...(Array.isArray(remoteStore?.familyLevelsReached) ? remoteStore.familyLevelsReached : [])
     ].map(String))
   );
+  baseStore.familyAchievementsUnlocked = Array.from(
+    new Set([
+      ...(Array.isArray(localStore?.familyAchievementsUnlocked) ? localStore.familyAchievementsUnlocked : []),
+      ...(Array.isArray(remoteStore?.familyAchievementsUnlocked) ? remoteStore.familyAchievementsUnlocked : [])
+    ].map(String))
+  );
   baseStore.migratedLegacyProgress = Boolean(localStore?.migratedLegacyProgress || remoteStore?.migratedLegacyProgress);
   return baseStore;
 }
@@ -719,6 +784,7 @@ function mergeProfileData(localProfile, remoteProfile, defaultProfile) {
         nounVerb: Math.max(normalizePosition(local.positions?.nounVerb), normalizePosition(remote.positions?.nounVerb))
       },
       levelBonusesAwarded: Array.from(new Set([...(local.levelBonusesAwarded || []), ...(remote.levelBonusesAwarded || [])])),
+      achievementsUnlocked: Array.from(new Set([...(local.achievementsUnlocked || []), ...(remote.achievementsUnlocked || [])])),
       history: mergeHistory(local.history, remote.history),
       lastStudyDate: latestString(local.lastStudyDate, remote.lastStudyDate),
       settings: remote.settings || local.settings
@@ -932,6 +998,7 @@ function renderDashboard() {
   if (!currentProfileId) return;
   const profile = getCurrentProfile();
   prepareProfileDailyState(profile);
+  checkAchievements("dashboard");
   const articleSummary = getArticleSummary();
   const nounVerbSummary = getNounVerbSummary();
   const level = getCoinLevel(profile.coins);
@@ -980,6 +1047,7 @@ function renderDashboard() {
   els.streakBest.textContent = `Best: ${streak.best} days`;
   renderAvatar(els.dashboardAvatar, profile);
   renderCoinLeaderboard();
+  renderAchievements();
   saveProfileStore();
 }
 
@@ -1016,6 +1084,43 @@ function renderCoinLeaderboard() {
       return row;
     })
   );
+}
+
+function renderAchievements() {
+  if (!els.achievementsGrid || !profileStore || !currentProfileId) return;
+  const profile = getCurrentProfile();
+  const profileUnlocked = new Set(normalizeAchievementList(profile.achievementsUnlocked));
+  const familyUnlocked = new Set(normalizeAchievementList(profileStore.familyAchievementsUnlocked));
+
+  els.achievementsGrid.replaceChildren(
+    ...ACHIEVEMENTS.map((achievement) => {
+      const unlocked = achievement.scope === "family"
+        ? familyUnlocked.has(achievement.id)
+        : profileUnlocked.has(achievement.id);
+      const badge = document.createElement("article");
+      badge.className = "achievement-badge";
+      badge.classList.toggle("unlocked", unlocked);
+      badge.classList.toggle("locked", !unlocked);
+      badge.replaceChildren(
+        createTextElement("span", "achievement-icon", unlocked ? achievement.icon : "🔒"),
+        createAchievementBody(achievement, unlocked)
+      );
+      return badge;
+    })
+  );
+}
+
+function createAchievementBody(achievement, unlocked) {
+  const body = document.createElement("div");
+  const rewardText = achievement.reward > 0
+    ? `Reward: +${achievement.reward} coins`
+    : "Family achievement";
+  body.replaceChildren(
+    createTextElement("strong", "", achievement.name),
+    createTextElement("span", "", achievement.description),
+    createTextElement("small", "", unlocked ? `Unlocked · ${rewardText}` : rewardText)
+  );
+  return body;
 }
 
 function createTextElement(tagName, className, text) {
@@ -1951,6 +2056,7 @@ function awardCoins(amount) {
   profile.coins = normalizeCoinCount(profile.coins) + normalizeCounter(amount);
   awardLevelBonusIfNeeded(profile);
   celebrateFamilyLevelIfNeeded();
+  checkAchievements("coins");
   saveProfileStore();
 }
 
@@ -2009,6 +2115,78 @@ function showDailyChallengeComplete(challenge) {
   els.levelCelebration.classList.remove("hidden");
 }
 
+function checkAchievements(reason = "") {
+  if (!profileStore || !currentProfileId || checkingAchievements) return;
+  checkingAchievements = true;
+  try {
+    const profile = getCurrentProfile();
+    profile.achievementsUnlocked = normalizeAchievementList(profile.achievementsUnlocked);
+    profileStore.familyAchievementsUnlocked = normalizeAchievementList(profileStore.familyAchievementsUnlocked);
+
+    ACHIEVEMENTS.forEach((achievement) => {
+      const isUnlocked = achievement.scope === "family"
+        ? profileStore.familyAchievementsUnlocked.includes(achievement.id)
+        : profile.achievementsUnlocked.includes(achievement.id);
+      if (isUnlocked || !isAchievementConditionMet(achievement, profile)) return;
+      unlockAchievement(achievement, profile, reason);
+    });
+  } finally {
+    checkingAchievements = false;
+  }
+}
+
+function isAchievementConditionMet(achievement, profile) {
+  if (achievement.id === "first-correct-answer") return hasAnyCorrectQuizAnswer(profile);
+  if (achievement.id === "first-100-coins") return normalizeCoinCount(profile.coins) >= 100;
+  if (achievement.id === "ten-day-streak") return normalizeCounter(profile.streak?.current) >= 10;
+  if (achievement.id === "hundred-articles-mastered") return getArticleSummary().mastered >= 100;
+  if (achievement.id === "family-1000-coins") return getFamilyCoinTotal(profileStore.profiles) >= 1000;
+  if (achievement.id === "noun-verb-explorer") return getNounVerbCorrectAnswerCount(profile) >= 20;
+  return false;
+}
+
+function hasAnyCorrectQuizAnswer(profile) {
+  return Object.values(profile.articleProgress || {}).some((entry) => normalizeCounter(entry.articleCorrectCount) > 0)
+    || Object.values(profile.nounVerbProgress || {}).some((entry) => normalizeCounter(entry.correctCount) > 0);
+}
+
+function getNounVerbCorrectAnswerCount(profile) {
+  return Object.values(profile.nounVerbProgress || {}).reduce((total, entry) => {
+    return total + normalizeCounter(entry.correctCount);
+  }, 0);
+}
+
+function unlockAchievement(achievement, profile, reason = "") {
+  if (achievement.scope === "family") {
+    profileStore.familyAchievementsUnlocked.push(achievement.id);
+    showAchievementCelebration(achievement);
+    return;
+  }
+
+  profile.achievementsUnlocked.push(achievement.id);
+  if (achievement.reward > 0) {
+    profile.coins = normalizeCoinCount(profile.coins) + achievement.reward;
+    awardLevelBonusIfNeeded(profile);
+    celebrateFamilyLevelIfNeeded();
+  }
+  showAchievementCelebration(achievement);
+  if (reason !== "coins") checkAchievements("achievement-reward");
+}
+
+function showAchievementCelebration(achievement) {
+  els.levelCelebrationTitle.textContent = "🎉 Achievement Unlocked!";
+  els.levelCelebrationProfile.textContent = achievement.scope === "family" ? "Family achievement:" : "Achievement:";
+  els.levelCelebrationLevel.textContent = `${achievement.icon} ${achievement.name}`;
+  if (achievement.reward > 0) {
+    els.levelCelebrationBonus.textContent = `+${achievement.reward} Bonus Coins`;
+    els.levelCelebrationBonus.classList.remove("hidden");
+  } else {
+    els.levelCelebrationBonus.textContent = "Celebration only";
+    els.levelCelebrationBonus.classList.remove("hidden");
+  }
+  els.levelCelebration.classList.remove("hidden");
+}
+
 function recordDailyActivity(type, details = {}) {
   if (!currentProfileId) return;
   const profile = getCurrentProfile();
@@ -2032,6 +2210,7 @@ function recordDailyActivity(type, details = {}) {
   }
 
   updateStreakQualification(profile);
+  checkAchievements("daily-activity");
   saveProfileStore();
 }
 
