@@ -1,4 +1,5 @@
 const CSV_URL = "vocabulary.csv";
+const NOUN_VERB_CSV_URL = "nomen_verb_verbindungen.csv";
 const APP_PASSWORD = "b1";
 const UNLOCK_STORAGE_KEY = "goethe-b1-flashcards-unlocked-v1";
 const STORAGE_KEY = "goethe-b1-flashcards-progress-v1";
@@ -93,6 +94,9 @@ const els = {
   dashboardArticleNew: document.querySelector("#dashboardArticleNew"),
   dashboardArticleLearned: document.querySelector("#dashboardArticleLearned"),
   dashboardArticleMastered: document.querySelector("#dashboardArticleMastered"),
+  dashboardNounVerbNew: document.querySelector("#dashboardNounVerbNew"),
+  dashboardNounVerbLearned: document.querySelector("#dashboardNounVerbLearned"),
+  dashboardNounVerbMastered: document.querySelector("#dashboardNounVerbMastered"),
   challengeArticleNew: document.querySelector("#challengeArticleNew"),
   challengeArticleLearned: document.querySelector("#challengeArticleLearned"),
   challengeArticleMastered: document.querySelector("#challengeArticleMastered"),
@@ -126,6 +130,13 @@ const els = {
   searchPanel: document.querySelector("#searchPanel"),
   statsGrid: document.querySelector("#statsGrid"),
   studyStage: document.querySelector("#studyStage"),
+  nounVerbStage: document.querySelector("#nounVerbStage"),
+  nounVerbCounter: document.querySelector("#nounVerbCounter"),
+  nounVerbPrompt: document.querySelector("#nounVerbPrompt"),
+  nounVerbOptions: document.querySelector("#nounVerbOptions"),
+  nounVerbResult: document.querySelector("#nounVerbResult"),
+  nounVerbEmptyState: document.querySelector("#nounVerbEmptyState"),
+  nounVerbNext: document.querySelector("#nounVerbNext"),
   actionBar: document.querySelector("#actionBar"),
   deckStatus: document.querySelector("#deckStatus"),
   currentProfileLabel: document.querySelector("#currentProfileLabel"),
@@ -178,13 +189,20 @@ const els = {
 
 let cards = [];
 let visibleCards = [];
+let nounVerbPairs = [];
+let visibleNounVerbPairs = [];
 let currentIndex = 0;
+let nounVerbCurrentIndex = 0;
 let answerShown = false;
 let selectedArticle = "";
 let articleQuizAnswered = false;
 let selectedQuizArticle = "";
+let nounVerbAnswered = false;
+let selectedNounVerbVerb = "";
+let nounVerbChoices = [];
 let progress = {};
 let articleProgress = {};
+let nounVerbProgress = {};
 let profileStore = null;
 let currentProfileId = "";
 let searchResults = [];
@@ -221,6 +239,15 @@ async function unlockApp() {
   } catch (error) {
     els.deckStatus.textContent = "Could not load vocabulary.csv. Use a local web server or upload a CSV.";
     cards = [];
+  }
+  try {
+    const response = await fetch(NOUN_VERB_CSV_URL, { cache: "no-store" });
+    if (!response.ok) throw new Error("Noun-verb file was not found.");
+    const csv = await response.text();
+    nounVerbPairs = normalizeNounVerbPairs(parseCsv(csv));
+  } catch (error) {
+    console.warn("Could not load noun-verb pairs.", error);
+    nounVerbPairs = [];
   }
   if (profileStore.currentProfile) {
     selectProfile(profileStore.currentProfile);
@@ -351,6 +378,7 @@ function normalizeProfileData(data, profile) {
     decks: data?.decks || {},
     progress: normalizeMeaningProgress(data?.progress || {}),
     articleProgress: normalizeArticleProgress(data?.articleProgress || {}),
+    nounVerbProgress: normalizeNounVerbProgress(data?.nounVerbProgress || {}),
     positions: normalizePositions(data?.positions),
     settings: {
       mode: data?.settings?.mode || "de-en",
@@ -412,6 +440,30 @@ function normalizeArticleProgress(savedProgress) {
   );
 }
 
+function normalizeNounVerbProgress(savedProgress) {
+  return Object.fromEntries(
+    Object.entries(savedProgress).map(([pairId, entry]) => {
+      const correctCount = normalizeCounter(entry.correctCount);
+      const wrongCount = normalizeCounter(entry.wrongCount);
+      return [
+        pairId,
+        {
+          ...entry,
+          correctCount,
+          wrongCount,
+          lastAnsweredAt: typeof entry.lastAnsweredAt === "string"
+            ? entry.lastAnsweredAt
+            : typeof entry.updatedAt === "string" ? entry.updatedAt : "",
+          lastWrongAt: typeof entry.lastWrongAt === "string"
+            ? entry.lastWrongAt
+            : wrongCount > 0 && typeof entry.updatedAt === "string" ? entry.updatedAt : "",
+          status: normalizeNounVerbStatus(entry.status, { correctCount })
+        }
+      ];
+    })
+  );
+}
+
 function normalizeMeaningStatus(value) {
   if (value === "know" || value === "known" || value === "meaningOnly") return "known";
   if (value === "unsure") return "unsure";
@@ -423,6 +475,13 @@ function normalizeArticleStatus(value, entry = {}) {
   const correctCount = normalizeCounter(entry.articleCorrectCount);
   if (value === "mastered" || correctCount >= 3) return "mastered";
   if (value === "learned" || value === "known" || correctCount >= 1) return "learned";
+  return "new";
+}
+
+function normalizeNounVerbStatus(value, entry = {}) {
+  const correctCount = normalizeCounter(entry.correctCount);
+  if (value === "mastered" || correctCount >= 3) return "mastered";
+  if (value === "learned" || correctCount >= 1) return "learned";
   return "new";
 }
 
@@ -547,6 +606,7 @@ function applyRemoteProfileStore(remoteStore) {
   if (currentProfileId && profileStore.profiles[currentProfileId]) {
     progress = profileStore.profiles[currentProfileId].progress;
     articleProgress = profileStore.profiles[currentProfileId].articleProgress;
+    nounVerbProgress = profileStore.profiles[currentProfileId].nounVerbProgress;
   }
   applyingRemoteStore = false;
   refreshVisibleProfileState();
@@ -589,6 +649,7 @@ function mergeProfileData(localProfile, remoteProfile, defaultProfile) {
       streak: pickBestStreak(local.streak, remote.streak),
       progress: mergeProgressEntries(local.progress, remote.progress),
       articleProgress: mergeProgressEntries(local.articleProgress, remote.articleProgress),
+      nounVerbProgress: mergeProgressEntries(local.nounVerbProgress, remote.nounVerbProgress),
       positions: {
         vocabulary: Math.max(normalizePosition(local.positions?.vocabulary), normalizePosition(remote.positions?.vocabulary)),
         article: Math.max(normalizePosition(local.positions?.article), normalizePosition(remote.positions?.article)),
@@ -668,6 +729,9 @@ function refreshVisibleProfileState() {
     renderDashboard();
   } else if (currentView === "coin-challenges") {
     renderCoinChallenges();
+  } else if (currentView === "noun-verb") {
+    applyNounVerbSmartOrder();
+    renderNounVerbQuiz();
   } else {
     updateStats();
     renderCard();
@@ -678,6 +742,7 @@ function showProfileScreen() {
   currentProfileId = "";
   progress = {};
   articleProgress = {};
+  nounVerbProgress = {};
   els.appShell.classList.add("locked");
   els.profileScreen.classList.remove("hidden");
   renderProfileCards();
@@ -690,6 +755,7 @@ function selectProfile(profileId) {
   profileStore.currentProfile = profileId;
   progress = profile.progress;
   articleProgress = profile.articleProgress;
+  nounVerbProgress = profile.nounVerbProgress;
   applyProfileSettings(profile.settings);
   saveProfileStore();
   els.currentProfileLabel.textContent = `${profile.emoji} ${profile.name}`;
@@ -734,6 +800,7 @@ function showDashboard() {
   els.searchPanel.classList.add("hidden");
   els.statsGrid.classList.add("hidden");
   els.studyStage.classList.add("hidden");
+  els.nounVerbStage.classList.add("hidden");
   els.actionBar.classList.add("hidden");
 }
 
@@ -746,6 +813,7 @@ function showCoinChallenges() {
   els.searchPanel.classList.add("hidden");
   els.statsGrid.classList.add("hidden");
   els.studyStage.classList.add("hidden");
+  els.nounVerbStage.classList.add("hidden");
   els.actionBar.classList.add("hidden");
 }
 
@@ -753,6 +821,7 @@ function showStudyView(options = {}) {
   currentView = "study";
   els.dashboardScreen.classList.add("hidden");
   els.coinChallengesScreen.classList.add("hidden");
+  els.nounVerbStage.classList.add("hidden");
   els.controlPanel.classList.toggle("hidden", options.hideControls === true);
   els.searchPanel.classList.remove("hidden");
   els.statsGrid.classList.remove("hidden");
@@ -768,11 +837,27 @@ function showStudyView(options = {}) {
   }
 }
 
+function showNounVerbQuiz() {
+  currentView = "noun-verb";
+  els.dashboardScreen.classList.add("hidden");
+  els.coinChallengesScreen.classList.add("hidden");
+  els.controlPanel.classList.add("hidden");
+  els.searchPanel.classList.add("hidden");
+  els.statsGrid.classList.add("hidden");
+  els.studyStage.classList.add("hidden");
+  els.actionBar.classList.add("hidden");
+  els.nounVerbStage.classList.remove("hidden");
+  applyNounVerbSmartOrder();
+  resumeNounVerbPosition();
+  renderNounVerbQuiz();
+}
+
 function renderDashboard() {
   if (!currentProfileId) return;
   const profile = getCurrentProfile();
   prepareProfileDailyState(profile);
   const articleSummary = getArticleSummary();
+  const nounVerbSummary = getNounVerbSummary();
   const level = getCoinLevel(profile.coins);
   const levelPercent = getLevelProgressPercent(profile.coins, level);
   const familySummary = getFamilyWealthSummary();
@@ -785,6 +870,9 @@ function renderDashboard() {
   els.dashboardArticleNew.textContent = articleSummary.new;
   els.dashboardArticleLearned.textContent = articleSummary.learned;
   els.dashboardArticleMastered.textContent = articleSummary.mastered;
+  els.dashboardNounVerbNew.textContent = nounVerbSummary.new;
+  els.dashboardNounVerbLearned.textContent = nounVerbSummary.learned;
+  els.dashboardNounVerbMastered.textContent = nounVerbSummary.mastered;
   els.levelIcon.textContent = level.icon;
   els.levelName.textContent = level.name;
   els.levelProfileName.textContent = `${profile.name}'s`;
@@ -814,12 +902,13 @@ function renderDashboard() {
 
 function renderCoinChallenges() {
   const articleSummary = getArticleSummary();
+  const nounVerbSummary = getNounVerbSummary();
   els.challengeArticleNew.textContent = articleSummary.new;
   els.challengeArticleLearned.textContent = articleSummary.learned;
   els.challengeArticleMastered.textContent = articleSummary.mastered;
-  els.challengeNounVerbNew.textContent = 0;
-  els.challengeNounVerbLearned.textContent = 0;
-  els.challengeNounVerbMastered.textContent = 0;
+  els.challengeNounVerbNew.textContent = nounVerbSummary.new;
+  els.challengeNounVerbLearned.textContent = nounVerbSummary.learned;
+  els.challengeNounVerbMastered.textContent = nounVerbSummary.mastered;
 }
 
 function renderCoinLeaderboard() {
@@ -985,7 +1074,7 @@ function handleChallengeAction(action) {
     articles: { mode: "article", filter: "smartArticle", resume: true }
   };
   if (action === "noun-verb") {
-    window.alert("Noun-Verb Quiz is ready for the next build.");
+    showNounVerbQuiz();
     return;
   }
   const route = routes[action];
@@ -1031,11 +1120,31 @@ function resumeSavedPosition() {
   currentIndex = clamp(getSavedPosition(), 0, visibleCards.length - 1);
 }
 
+function resumeNounVerbPosition() {
+  if (!visibleNounVerbPairs.length) {
+    nounVerbCurrentIndex = 0;
+    return;
+  }
+  nounVerbCurrentIndex = clamp(getSavedPosition("nounVerb"), 0, visibleNounVerbPairs.length - 1);
+}
+
 function saveCurrentPosition() {
+  if (currentView === "noun-verb") {
+    saveNounVerbPosition();
+    return;
+  }
   if (!currentProfileId) return;
   const profile = getCurrentProfile();
   profile.positions = normalizePositions(profile.positions);
   profile.positions[getPositionKey()] = clamp(currentIndex, 0, Math.max(visibleCards.length - 1, 0));
+  saveProfileStore();
+}
+
+function saveNounVerbPosition() {
+  if (!currentProfileId) return;
+  const profile = getCurrentProfile();
+  profile.positions = normalizePositions(profile.positions);
+  profile.positions.nounVerb = clamp(nounVerbCurrentIndex, 0, Math.max(visibleNounVerbPairs.length - 1, 0));
   saveProfileStore();
 }
 
@@ -1231,6 +1340,14 @@ function bindEvents() {
     answerArticleQuiz(button.dataset.quizArticle);
   });
 
+  els.nounVerbOptions.addEventListener("click", (event) => {
+    const button = event.target.closest("button[data-verb]");
+    if (!button || nounVerbAnswered) return;
+    answerNounVerbQuiz(button.dataset.verb);
+  });
+
+  els.nounVerbNext.addEventListener("click", moveNounVerbNext);
+
   els.switchProfile.addEventListener("click", () => {
     saveCurrentPosition();
     closeSettingsMenu();
@@ -1260,10 +1377,12 @@ function bindEvents() {
     if (!window.confirm(`Reset saved progress for ${profile.name}?`)) return;
     progress = {};
     articleProgress = {};
+    nounVerbProgress = {};
     profile.history = [];
     profile.lastStudyDate = "";
     saveProgress();
     saveArticleProgress();
+    saveNounVerbProgress();
     saveProfileStore();
     currentIndex = 0;
     applyModeAndFilter();
@@ -1355,6 +1474,33 @@ function normalizeCards(rows) {
       example: row.example || "",
       isNoun: ["der", "die", "das"].includes(row.article.toLowerCase())
     }));
+}
+
+function normalizeNounVerbPairs(rows) {
+  const seen = new Set();
+  return rows
+    .filter((row) => row.noun && row.verb && row.phrase)
+    .map((row, index) => {
+      const phrase = row.phrase.trim();
+      const verb = row.verb.trim();
+      const id = slugify(`${row.noun}-${row.article || "none"}-${phrase}-${verb}`) || `noun-verb-${index}`;
+      return {
+        id,
+        noun: row.noun.trim(),
+        article: (row.article || "").trim().toLowerCase(),
+        verb,
+        phrase,
+        english: row.english || "",
+        example: row.example || "",
+        category: row.category || "review"
+      };
+    })
+    .filter((pair) => {
+      const key = `${pair.phrase.toLowerCase()}::${pair.verb.toLowerCase()}`;
+      if (seen.has(key)) return false;
+      seen.add(key);
+      return true;
+    });
 }
 
 function applyModeAndFilter() {
@@ -1894,6 +2040,213 @@ function getWordsLearnedCount() {
   }).length;
 }
 
+function renderNounVerbQuiz() {
+  const pair = visibleNounVerbPairs[nounVerbCurrentIndex];
+  const hasPair = Boolean(pair);
+  els.nounVerbEmptyState.classList.toggle("hidden", hasPair);
+  els.nounVerbPrompt.classList.toggle("hidden", !hasPair);
+  els.nounVerbOptions.classList.toggle("hidden", !hasPair);
+  els.nounVerbResult.classList.add("hidden");
+  els.nounVerbNext.classList.add("hidden");
+  els.nounVerbCounter.textContent = hasPair
+    ? `Card ${nounVerbCurrentIndex + 1} of ${visibleNounVerbPairs.length}`
+    : "0 / 0";
+  if (!pair) {
+    els.nounVerbPrompt.textContent = "No noun-verb pairs";
+    els.nounVerbOptions.replaceChildren();
+    return;
+  }
+
+  if (!nounVerbChoices.length || !nounVerbChoices.includes(pair.verb)) {
+    nounVerbChoices = buildNounVerbChoices(pair);
+  }
+
+  els.nounVerbPrompt.textContent = buildNounVerbPrompt(pair);
+  els.nounVerbOptions.replaceChildren(
+    ...nounVerbChoices.map((verb) => {
+      const button = document.createElement("button");
+      button.type = "button";
+      button.dataset.verb = verb;
+      button.textContent = verb;
+      button.disabled = nounVerbAnswered;
+      button.classList.toggle("correct", nounVerbAnswered && verb === pair.verb);
+      button.classList.toggle("incorrect", nounVerbAnswered && verb === selectedNounVerbVerb && verb !== pair.verb);
+      return button;
+    })
+  );
+
+  if (nounVerbAnswered) renderNounVerbResult(pair);
+}
+
+function buildNounVerbPrompt(pair) {
+  const index = pair.phrase.toLowerCase().indexOf(pair.verb.toLowerCase());
+  if (index >= 0) {
+    return `${pair.phrase.slice(0, index)}_____${pair.phrase.slice(index + pair.verb.length)}`;
+  }
+  return `${pair.phrase} _____`;
+}
+
+function buildNounVerbChoices(pair) {
+  const wrongChoices = shuffleCards(
+    Array.from(new Set(nounVerbPairs.map((item) => item.verb).filter((verb) => verb && verb !== pair.verb)))
+  ).slice(0, 3);
+  return shuffleCards([pair.verb, ...wrongChoices]);
+}
+
+function answerNounVerbQuiz(verb) {
+  const pair = visibleNounVerbPairs[nounVerbCurrentIndex];
+  if (!pair || nounVerbAnswered) return;
+  selectedNounVerbVerb = verb;
+  nounVerbAnswered = true;
+  const isCorrect = verb === pair.verb;
+  updateNounVerbLearningProgress(pair, isCorrect);
+  if (isCorrect) awardCoins(2);
+  recordStudyHistory("noun-verb", pair, isCorrect ? "correct" : "wrong");
+  saveNounVerbProgress();
+  saveNounVerbPosition();
+  renderNounVerbQuiz();
+  renderCoinChallenges();
+  if (currentView === "dashboard") renderDashboard();
+}
+
+function renderNounVerbResult(pair) {
+  const isCorrect = selectedNounVerbVerb === pair.verb;
+  els.nounVerbResult.classList.remove("hidden", "success", "error");
+  els.nounVerbResult.classList.add(isCorrect ? "success" : "error");
+  els.nounVerbResult.innerHTML = `
+    <span class="quiz-result-label">${isCorrect ? "✅ Correct" : "❌ Wrong"}</span>
+    ${isCorrect ? "" : "<span class=\"quiz-result-correction\">Correct answer:</span>"}
+    <span class="quiz-result-answer">${escapeHtml(pair.phrase)}</span>
+    <span class="quiz-result-meaning"><strong>English:</strong> ${escapeHtml(pair.english || "-")}</span>
+    <span class="quiz-result-meaning"><strong>Example:</strong> ${escapeHtml(pair.example || "-")}</span>
+    ${isCorrect ? "<span class=\"quiz-result-reward\"><strong>Reward:</strong> 🪙🪙 +2 Coins</span>" : ""}
+  `;
+  els.nounVerbOptions.querySelectorAll("button").forEach((button) => {
+    const verb = button.dataset.verb;
+    button.disabled = true;
+    button.classList.toggle("correct", verb === pair.verb);
+    button.classList.toggle("incorrect", verb === selectedNounVerbVerb && verb !== pair.verb);
+  });
+  els.nounVerbNext.classList.remove("hidden");
+}
+
+function moveNounVerbNext() {
+  if (!visibleNounVerbPairs.length) return;
+  nounVerbCurrentIndex = (nounVerbCurrentIndex + 1) % visibleNounVerbPairs.length;
+  nounVerbAnswered = false;
+  selectedNounVerbVerb = "";
+  nounVerbChoices = [];
+  saveNounVerbPosition();
+  renderNounVerbQuiz();
+}
+
+function applyNounVerbSmartOrder() {
+  visibleNounVerbPairs = applyNounVerbPriorityOrder(nounVerbPairs);
+  nounVerbCurrentIndex = clamp(nounVerbCurrentIndex, 0, Math.max(visibleNounVerbPairs.length - 1, 0));
+  nounVerbAnswered = false;
+  selectedNounVerbVerb = "";
+  nounVerbChoices = [];
+}
+
+function applyNounVerbPriorityOrder(pairList) {
+  const wrongRecent = [];
+  const newPairs = [];
+  const learned = [];
+  const mastered = [];
+
+  pairList.forEach((pair) => {
+    const status = getNounVerbStatus(pair);
+    if (isNounVerbWrongRecently(pair)) wrongRecent.push(pair);
+    else if (status === "new") newPairs.push(pair);
+    else if (status === "learned") learned.push(pair);
+    else mastered.push(pair);
+  });
+
+  wrongRecent.sort((first, second) => getNounVerbLastWrongMs(second) - getNounVerbLastWrongMs(first));
+  newPairs.sort(compareNounVerbPairs);
+  learned.sort((first, second) => getNounVerbProgressEntry(first).correctCount - getNounVerbProgressEntry(second).correctCount || compareNounVerbPairs(first, second));
+  mastered.sort((first, second) => getNounVerbLastAnsweredMs(first) - getNounVerbLastAnsweredMs(second) || compareNounVerbPairs(first, second));
+
+  const mainReview = [...wrongRecent, ...newPairs, ...learned];
+  if (!mainReview.length) return mastered;
+  return [...mainReview, ...mastered.filter((_, index) => index % 6 === 0)];
+}
+
+function compareNounVerbPairs(first, second) {
+  return getSortKey(first.noun).localeCompare(getSortKey(second.noun), "de") || first.phrase.localeCompare(second.phrase, "de");
+}
+
+function updateNounVerbLearningProgress(pair, isCorrect) {
+  const previous = getNounVerbProgressEntry(pair);
+  const now = new Date().toISOString();
+  const correctCount = previous.correctCount + (isCorrect ? 1 : 0);
+  const wrongCount = previous.wrongCount + (isCorrect ? 0 : 1);
+  const status = isCorrect
+    ? correctCount >= 3 ? "mastered" : "learned"
+    : previous.status;
+
+  nounVerbProgress[pair.id] = {
+    ...previous,
+    correctCount,
+    wrongCount,
+    lastAnsweredAt: now,
+    lastWrongAt: isCorrect ? previous.lastWrongAt || "" : now,
+    status,
+    updatedAt: now
+  };
+}
+
+function getNounVerbProgressEntry(pair) {
+  const entry = nounVerbProgress[pair.id] || {};
+  const correctCount = normalizeCounter(entry.correctCount);
+  const wrongCount = normalizeCounter(entry.wrongCount);
+  return {
+    ...entry,
+    correctCount,
+    wrongCount,
+    lastAnsweredAt: typeof entry.lastAnsweredAt === "string"
+      ? entry.lastAnsweredAt
+      : typeof entry.updatedAt === "string" ? entry.updatedAt : "",
+    lastWrongAt: typeof entry.lastWrongAt === "string"
+      ? entry.lastWrongAt
+      : wrongCount > 0 && typeof entry.updatedAt === "string" ? entry.updatedAt : "",
+    status: normalizeNounVerbStatus(entry.status, { correctCount })
+  };
+}
+
+function getNounVerbStatus(pair) {
+  return getNounVerbProgressEntry(pair).status;
+}
+
+function getNounVerbLastAnsweredMs(pair) {
+  const lastAnswered = Date.parse(getNounVerbProgressEntry(pair).lastAnsweredAt);
+  return Number.isFinite(lastAnswered) ? lastAnswered : 0;
+}
+
+function getNounVerbLastWrongMs(pair) {
+  const lastWrong = Date.parse(getNounVerbProgressEntry(pair).lastWrongAt);
+  return Number.isFinite(lastWrong) ? lastWrong : 0;
+}
+
+function isNounVerbWrongRecently(pair) {
+  const entry = getNounVerbProgressEntry(pair);
+  if (!entry.wrongCount || entry.status === "mastered") return false;
+  const lastWrong = getNounVerbLastWrongMs(pair);
+  if (!lastWrong) return false;
+  const sevenDays = 7 * 24 * 60 * 60 * 1000;
+  return Date.now() - lastWrong <= sevenDays;
+}
+
+function getNounVerbSummary() {
+  return nounVerbPairs.reduce(
+    (total, pair) => {
+      total[getNounVerbStatus(pair)] += 1;
+      return total;
+    },
+    { new: 0, learned: 0, mastered: 0 }
+  );
+}
+
 function updateRatingButtonLabels(mode) {
   const labels = mode === "article"
     ? [
@@ -2041,7 +2394,7 @@ function recordStudyHistory(type, card, rating) {
     {
       type,
       cardId: card.id,
-      word: card.word,
+      word: card.word || card.phrase || card.noun || "",
       rating,
       studiedAt: now,
       mode: els.modeSelect.value
@@ -2067,6 +2420,16 @@ function loadArticleProgress() {
 function saveArticleProgress() {
   if (!currentProfileId) return;
   getCurrentProfile().articleProgress = articleProgress;
+  saveProfileStore();
+}
+
+function loadNounVerbProgress() {
+  return getCurrentProfile()?.nounVerbProgress || {};
+}
+
+function saveNounVerbProgress() {
+  if (!currentProfileId) return;
+  getCurrentProfile().nounVerbProgress = nounVerbProgress;
   saveProfileStore();
 }
 
