@@ -1354,6 +1354,11 @@ select,
   font-size: clamp(4rem, 10vw, 7.2rem);
 }
 
+.clean-quiz-mode.meaning-match-mode #nounVerbPrompt {
+  font-size: clamp(1.8rem, 4.5vw, 2.8rem);
+  line-height: 1.12;
+}
+
 .clean-article-practice .article-guess,
 .clean-quiz-mode .noun-verb-options {
   max-width: 720px;
@@ -1917,10 +1922,15 @@ select,
   }
 
   .clean-article-practice #questionText,
-  .clean-quiz-mode #nounVerbPrompt {
-    font-size: clamp(3.2rem, 17vw, 5.1rem);
-    line-height: 0.98;
-  }
+.clean-quiz-mode #nounVerbPrompt {
+  font-size: clamp(3.2rem, 17vw, 5.1rem);
+  line-height: 0.98;
+}
+
+.clean-quiz-mode.meaning-match-mode #nounVerbPrompt {
+  font-size: clamp(1.55rem, 5vw, 2.5rem);
+  line-height: 1.12;
+}
 
   .clean-article-practice .article-guess,
   .clean-quiz-mode .noun-verb-options {

@@ -331,6 +331,9 @@ const els = {
   challengeNounVerbNew: document.querySelector("#challengeNounVerbNew"),
   challengeNounVerbLearned: document.querySelector("#challengeNounVerbLearned"),
   challengeNounVerbMastered: document.querySelector("#challengeNounVerbMastered"),
+  challengeMeaningMatchNew: document.querySelector("#challengeMeaningMatchNew"),
+  challengeMeaningMatchLearned: document.querySelector("#challengeMeaningMatchLearned"),
+  challengeMeaningMatchMastered: document.querySelector("#challengeMeaningMatchMastered"),
   levelIcon: document.querySelector("#levelIcon"),
   levelName: document.querySelector("#levelName"),
   levelProfileName: document.querySelector("#levelProfileName"),
@@ -361,6 +364,8 @@ const els = {
   studyStage: document.querySelector("#studyStage"),
   nounVerbStage: document.querySelector("#nounVerbStage"),
   nounVerbCounter: document.querySelector("#nounVerbCounter"),
+  nounVerbTitle: document.querySelector("#nounVerbTitle"),
+  nounVerbInstruction: document.querySelector("#nounVerbInstruction"),
   nounVerbPrompt: document.querySelector("#nounVerbPrompt"),
   nounVerbOptions: document.querySelector("#nounVerbOptions"),
   nounVerbResult: document.querySelector("#nounVerbResult"),
@@ -426,8 +431,10 @@ let cards = [];
 let visibleCards = [];
 let nounVerbPairs = [];
 let visibleNounVerbPairs = [];
+let visibleMeaningMatchPairs = [];
 let currentIndex = 0;
 let nounVerbCurrentIndex = 0;
+let meaningMatchCurrentIndex = 0;
 let answerShown = false;
 let selectedArticle = "";
 let articleQuizAnswered = false;
@@ -438,11 +445,18 @@ let nounVerbQuizState = {
   hasAnswered: false,
   currentChoices: []
 };
+let meaningMatchQuizState = {
+  currentQuestionId: "",
+  selectedIndex: -1,
+  hasAnswered: false,
+  currentChoices: []
+};
 let recentNounVerbQuestionIds = [];
 let recentNounVerbNouns = [];
 let progress = {};
 let articleProgress = {};
 let nounVerbProgress = {};
+let meaningMatchProgress = {};
 let profileStore = null;
 let checkingAchievements = false;
 let currentProfileId = "";
@@ -653,6 +667,7 @@ function normalizeProfileData(data, profile) {
     progress: normalizeMeaningProgress(data?.progress || {}),
     articleProgress: normalizeArticleProgress(data?.articleProgress || {}),
     nounVerbProgress: normalizeNounVerbProgress(data?.nounVerbProgress || {}),
+    meaningMatchProgress: normalizeNounVerbProgress(data?.meaningMatchProgress || {}),
     positions: normalizePositions(data?.positions),
     settings: {
       mode: data?.settings?.mode || "de-en",
@@ -890,6 +905,7 @@ function applyRemoteProfileStore(remoteStore) {
     progress = profileStore.profiles[currentProfileId].progress;
     articleProgress = profileStore.profiles[currentProfileId].articleProgress;
     nounVerbProgress = profileStore.profiles[currentProfileId].nounVerbProgress;
+    meaningMatchProgress = profileStore.profiles[currentProfileId].meaningMatchProgress;
   }
   applyingRemoteStore = false;
   promoteFamilyAchievements(profileStore);
@@ -941,6 +957,7 @@ function mergeProfileData(localProfile, remoteProfile, defaultProfile) {
       progress: mergeProgressEntries(local.progress, remote.progress),
       articleProgress: mergeProgressEntries(local.articleProgress, remote.articleProgress),
       nounVerbProgress: mergeProgressEntries(local.nounVerbProgress, remote.nounVerbProgress),
+      meaningMatchProgress: mergeProgressEntries(local.meaningMatchProgress, remote.meaningMatchProgress),
       positions: {
         vocabulary: Math.max(normalizePosition(local.positions?.vocabulary), normalizePosition(remote.positions?.vocabulary)),
         article: Math.max(normalizePosition(local.positions?.article), normalizePosition(remote.positions?.article)),
@@ -1027,6 +1044,8 @@ function refreshVisibleProfileState() {
     renderCoinChallenges();
   } else if (currentView === "noun-verb") {
     renderNounVerbQuiz();
+  } else if (currentView === "meaning-match") {
+    renderMeaningMatchQuiz();
   } else {
     updateStats();
     renderCard();
@@ -1038,8 +1057,10 @@ function showProfileScreen() {
   progress = {};
   articleProgress = {};
   nounVerbProgress = {};
+  meaningMatchProgress = {};
   els.appShell.classList.remove("clean-article-practice");
   els.appShell.classList.remove("clean-quiz-mode");
+  els.appShell.classList.remove("meaning-match-mode");
   els.appShell.classList.add("locked");
   els.profileScreen.classList.remove("hidden");
   renderProfileCards();
@@ -1053,6 +1074,7 @@ function selectProfile(profileId) {
   progress = profile.progress;
   articleProgress = profile.articleProgress;
   nounVerbProgress = profile.nounVerbProgress;
+  meaningMatchProgress = profile.meaningMatchProgress;
   applyProfileSettings(profile.settings);
   saveProfileStore();
   els.currentProfileLabel.textContent = `${profile.emoji} ${profile.name}`;
@@ -1092,6 +1114,7 @@ function showDashboard() {
   currentView = "dashboard";
   els.appShell.classList.remove("clean-article-practice");
   els.appShell.classList.remove("clean-quiz-mode");
+  els.appShell.classList.remove("meaning-match-mode");
   renderDashboard();
   els.dashboardScreen.classList.remove("hidden");
   els.achievementCollectionScreen.classList.add("hidden");
@@ -1108,6 +1131,7 @@ function showCoinChallenges() {
   currentView = "coin-challenges";
   els.appShell.classList.remove("clean-article-practice");
   els.appShell.classList.remove("clean-quiz-mode");
+  els.appShell.classList.remove("meaning-match-mode");
   renderCoinChallenges();
   els.dashboardScreen.classList.add("hidden");
   els.achievementCollectionScreen.classList.add("hidden");
@@ -1124,6 +1148,7 @@ function showAchievementCollection() {
   currentView = "achievements";
   els.appShell.classList.remove("clean-article-practice");
   els.appShell.classList.remove("clean-quiz-mode");
+  els.appShell.classList.remove("meaning-match-mode");
   renderAchievementCollection();
   els.dashboardScreen.classList.add("hidden");
   els.achievementCollectionScreen.classList.remove("hidden");
@@ -1145,6 +1170,7 @@ function showStudyView(options = {}) {
   els.nounVerbStage.classList.add("hidden");
   els.appShell.classList.toggle("clean-article-practice", cleanArticlePractice);
   els.appShell.classList.toggle("clean-quiz-mode", cleanArticlePractice);
+  els.appShell.classList.remove("meaning-match-mode");
   els.controlPanel.classList.toggle("hidden", options.hideControls === true || cleanArticlePractice);
   els.searchPanel.classList.toggle("hidden", cleanArticlePractice);
   els.statsGrid.classList.toggle("hidden", cleanArticlePractice);
@@ -1164,6 +1190,7 @@ function showNounVerbQuiz() {
   currentView = "noun-verb";
   els.appShell.classList.remove("clean-article-practice");
   els.appShell.classList.add("clean-quiz-mode");
+  els.appShell.classList.remove("meaning-match-mode");
   els.dashboardScreen.classList.add("hidden");
   els.achievementCollectionScreen.classList.add("hidden");
   els.coinChallengesScreen.classList.add("hidden");
@@ -1177,6 +1204,25 @@ function showNounVerbQuiz() {
   resumeNounVerbPosition();
   generateNounVerbQuestion("open quiz", nounVerbCurrentIndex);
   renderNounVerbQuiz();
+}
+
+function showMeaningMatchQuiz() {
+  currentView = "meaning-match";
+  els.appShell.classList.remove("clean-article-practice");
+  els.appShell.classList.add("clean-quiz-mode");
+  els.appShell.classList.add("meaning-match-mode");
+  els.dashboardScreen.classList.add("hidden");
+  els.achievementCollectionScreen.classList.add("hidden");
+  els.coinChallengesScreen.classList.add("hidden");
+  els.controlPanel.classList.add("hidden");
+  els.searchPanel.classList.add("hidden");
+  els.statsGrid.classList.add("hidden");
+  els.studyStage.classList.add("hidden");
+  els.actionBar.classList.remove("hidden");
+  els.nounVerbStage.classList.remove("hidden");
+  applyMeaningMatchSmartOrder();
+  generateMeaningMatchQuestion("open quiz", meaningMatchCurrentIndex);
+  renderMeaningMatchQuiz();
 }
 
 function renderDashboard() {
@@ -1240,12 +1286,16 @@ function renderDashboard() {
 function renderCoinChallenges() {
   const articleSummary = getArticleSummary();
   const nounVerbSummary = getNounVerbSummary();
+  const meaningMatchSummary = getMeaningMatchSummary();
   els.challengeArticleNew.textContent = articleSummary.new;
   els.challengeArticleLearned.textContent = articleSummary.learned;
   els.challengeArticleMastered.textContent = articleSummary.mastered;
   els.challengeNounVerbNew.textContent = nounVerbSummary.new;
   els.challengeNounVerbLearned.textContent = nounVerbSummary.learned;
   els.challengeNounVerbMastered.textContent = nounVerbSummary.mastered;
+  els.challengeMeaningMatchNew.textContent = meaningMatchSummary.new;
+  els.challengeMeaningMatchLearned.textContent = meaningMatchSummary.learned;
+  els.challengeMeaningMatchMastered.textContent = meaningMatchSummary.mastered;
 }
 
 function renderCoinLeaderboard() {
@@ -1610,6 +1660,10 @@ function handleChallengeAction(action) {
     showNounVerbQuiz();
     return;
   }
+  if (action === "meaning-match") {
+    showMeaningMatchQuiz();
+    return;
+  }
   const route = routes[action];
   if (!route) return;
   openStudyRoute(route);
@@ -1851,11 +1905,19 @@ function bindEvents() {
       moveNounVerbCard(-1);
       return;
     }
+    if (currentView === "meaning-match") {
+      moveMeaningMatchCard(-1);
+      return;
+    }
     moveCard(-1);
   });
   els.nextCard.addEventListener("click", () => {
     if (currentView === "noun-verb") {
       moveNounVerbCard(1);
+      return;
+    }
+    if (currentView === "meaning-match") {
+      moveMeaningMatchCard(1);
       return;
     }
     moveCard(1);
@@ -1887,11 +1949,23 @@ function bindEvents() {
 
   els.nounVerbOptions.addEventListener("click", (event) => {
     const button = event.target.closest("button[data-verb]");
+    if (currentView === "meaning-match") {
+      const meaningMatchButton = event.target.closest("button[data-meaning-choice]");
+      if (!meaningMatchButton || meaningMatchQuizState.hasAnswered) return;
+      answerMeaningMatchQuiz(Number(meaningMatchButton.dataset.meaningChoice));
+      return;
+    }
     if (!button || nounVerbQuizState.hasAnswered) return;
     answerNounVerbQuiz(button.dataset.verb);
   });
 
-  els.nounVerbNext.addEventListener("click", () => moveNounVerbCard(1));
+  els.nounVerbNext.addEventListener("click", () => {
+    if (currentView === "meaning-match") {
+      moveMeaningMatchCard(1);
+      return;
+    }
+    moveNounVerbCard(1);
+  });
 
   els.switchProfile.addEventListener("click", () => {
     saveCurrentPosition();
@@ -1925,11 +1999,13 @@ function bindEvents() {
     progress = {};
     articleProgress = {};
     nounVerbProgress = {};
+    meaningMatchProgress = {};
     profile.history = [];
     profile.lastStudyDate = "";
     saveProgress();
     saveArticleProgress();
     saveNounVerbProgress();
+    saveMeaningMatchProgress();
     saveProfileStore();
     currentIndex = 0;
     applyModeAndFilter();
@@ -2189,6 +2265,10 @@ function escapeHtml(value) {
     .replace(/>/g, "&gt;")
     .replace(/"/g, "&quot;")
     .replace(/'/g, "&#039;");
+}
+
+function escapeRegExp(value) {
+  return String(value || "").replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
 }
 
 function renderCard() {
@@ -2491,7 +2571,8 @@ function isAchievementConditionMet(achievement, profile) {
 
 function hasAnyCorrectQuizAnswer(profile) {
   return Object.values(profile.articleProgress || {}).some((entry) => normalizeCounter(entry.articleCorrectCount) > 0)
-    || Object.values(profile.nounVerbProgress || {}).some((entry) => normalizeCounter(entry.correctCount) > 0);
+    || Object.values(profile.nounVerbProgress || {}).some((entry) => normalizeCounter(entry.correctCount) > 0)
+    || Object.values(profile.meaningMatchProgress || {}).some((entry) => normalizeCounter(entry.correctCount) > 0);
 }
 
 function getNounVerbCorrectAnswerCount(profile) {
@@ -2771,6 +2852,8 @@ function renderNounVerbQuiz() {
   if (hasPair) {
     nounVerbCurrentIndex = visibleNounVerbPairs.findIndex((item) => item.id === pair.id);
   }
+  els.nounVerbTitle.textContent = "Noun-Verb Pairs";
+  els.nounVerbInstruction.textContent = "Choose the verb";
   els.nounVerbStage.classList.toggle("noun-verb-result-visible", nounVerbQuizState.hasAnswered);
   els.showAnswer.classList.add("hidden");
   els.ratingButtons.classList.add("hidden");
@@ -2894,6 +2977,201 @@ function applyNounVerbSmartOrder() {
     : clamp(nounVerbCurrentIndex, 0, Math.max(visibleNounVerbPairs.length - 1, 0));
 }
 
+function resetMeaningMatchQuizState() {
+  meaningMatchQuizState = {
+    currentQuestionId: "",
+    selectedIndex: -1,
+    hasAnswered: false,
+    currentChoices: []
+  };
+}
+
+function getCurrentMeaningMatchPair() {
+  if (!meaningMatchQuizState.currentQuestionId) return null;
+  return visibleMeaningMatchPairs.find((pair) => pair.id === meaningMatchQuizState.currentQuestionId) || null;
+}
+
+function generateMeaningMatchQuestion(reason, targetIndex = meaningMatchCurrentIndex) {
+  if (!visibleMeaningMatchPairs.length) {
+    resetMeaningMatchQuizState();
+    console.log("Meaning Match question generated", {
+      currentQuestionId: "",
+      reason,
+      availableQuestions: 0
+    });
+    return;
+  }
+
+  meaningMatchCurrentIndex = clamp(targetIndex, 0, visibleMeaningMatchPairs.length - 1);
+  const pair = visibleMeaningMatchPairs[meaningMatchCurrentIndex];
+  meaningMatchQuizState = {
+    currentQuestionId: pair.id,
+    selectedIndex: -1,
+    hasAnswered: false,
+    currentChoices: buildMeaningMatchChoices(pair)
+  };
+  console.log("Meaning Match question generated", {
+    currentQuestionId: pair.id,
+    reason,
+    phrase: pair.phrase
+  });
+}
+
+function renderMeaningMatchQuiz() {
+  const pair = getCurrentMeaningMatchPair();
+  const hasPair = Boolean(pair);
+  if (hasPair) {
+    meaningMatchCurrentIndex = visibleMeaningMatchPairs.findIndex((item) => item.id === pair.id);
+  }
+  els.nounVerbTitle.textContent = "Meaning Match";
+  els.nounVerbInstruction.textContent = "Choose the better German sentence";
+  els.nounVerbStage.classList.toggle("noun-verb-result-visible", meaningMatchQuizState.hasAnswered);
+  els.showAnswer.classList.add("hidden");
+  els.ratingButtons.classList.add("hidden");
+  els.previousCard.disabled = visibleMeaningMatchPairs.length < 2;
+  els.nextCard.disabled = visibleMeaningMatchPairs.length < 2;
+  els.nounVerbEmptyState.classList.toggle("hidden", hasPair);
+  els.nounVerbPrompt.classList.toggle("hidden", !hasPair);
+  els.nounVerbOptions.classList.toggle("hidden", !hasPair);
+  els.nounVerbResult.classList.add("hidden");
+  els.nounVerbNext.classList.add("hidden");
+  els.nounVerbCounter.textContent = hasPair
+    ? `Card ${meaningMatchCurrentIndex + 1} of ${visibleMeaningMatchPairs.length}`
+    : "0 / 0";
+  if (!pair) {
+    els.nounVerbPrompt.textContent = "No meaning match questions";
+    els.nounVerbOptions.replaceChildren();
+    return;
+  }
+
+  els.nounVerbPrompt.textContent = buildMeaningMatchEnglishPrompt(pair);
+  els.nounVerbOptions.replaceChildren(
+    ...meaningMatchQuizState.currentChoices.map((choice, index) => {
+      const button = document.createElement("button");
+      button.type = "button";
+      button.dataset.meaningChoice = String(index);
+      button.textContent = `${index === 0 ? "A" : "B"}) ${choice.sentence}`;
+      button.disabled = meaningMatchQuizState.hasAnswered;
+      button.classList.toggle("correct", meaningMatchQuizState.hasAnswered && choice.isCorrect);
+      button.classList.toggle(
+        "incorrect",
+        meaningMatchQuizState.hasAnswered && index === meaningMatchQuizState.selectedIndex && !choice.isCorrect
+      );
+      return button;
+    })
+  );
+
+  if (meaningMatchQuizState.hasAnswered) renderMeaningMatchResult(pair);
+}
+
+function buildMeaningMatchEnglishPrompt(pair) {
+  const meaning = getMeaningMatchMeaning(pair);
+  const bareMeaning = meaning.replace(/^to\s+/i, "");
+  return `We need to ${bareMeaning} today.`;
+}
+
+function getMeaningMatchMeaning(pair) {
+  return String(pair.english || pair.phrase || "")
+    .split(";")[0]
+    .replace(/^to\s+/i, "")
+    .trim() || pair.phrase;
+}
+
+function buildMeaningMatchChoices(pair) {
+  const correctSentence = getMeaningMatchCorrectSentence(pair);
+  const wrongVerb = getMeaningMatchWrongVerb(pair);
+  const wrongSentence = buildMeaningMatchWrongSentence(pair, wrongVerb, correctSentence);
+  return shuffleCards([
+    { sentence: correctSentence, isCorrect: true },
+    { sentence: wrongSentence, isCorrect: false }
+  ]);
+}
+
+function getMeaningMatchCorrectSentence(pair) {
+  return pair.example?.trim() || `Wir müssen heute ${pair.phrase}.`;
+}
+
+function getMeaningMatchWrongVerb(pair) {
+  const verbs = Array.from(new Set(nounVerbPairs
+    .map((item) => item.verb)
+    .filter((verb) => verb && verb !== pair.verb)));
+  return shuffleCards(verbs)[0] || "machen";
+}
+
+function buildMeaningMatchWrongSentence(pair, wrongVerb, correctSentence) {
+  const escapedVerb = escapeRegExp(pair.verb);
+  const verbPattern = new RegExp(escapedVerb, "i");
+  if (verbPattern.test(correctSentence)) return correctSentence.replace(verbPattern, wrongVerb);
+  const wrongPhrase = pair.phrase.replace(verbPattern, wrongVerb);
+  return `Wir müssen heute ${wrongPhrase}.`;
+}
+
+function answerMeaningMatchQuiz(choiceIndex) {
+  const pair = getCurrentMeaningMatchPair();
+  if (!pair || meaningMatchQuizState.hasAnswered) return;
+  const choice = meaningMatchQuizState.currentChoices[choiceIndex];
+  if (!choice) return;
+  meaningMatchQuizState.selectedIndex = choiceIndex;
+  meaningMatchQuizState.hasAnswered = true;
+  const isCorrect = Boolean(choice.isCorrect);
+  updateMeaningMatchLearningProgress(pair, isCorrect);
+  if (isCorrect) awardCoins(3);
+  recordStudyHistory("meaning-match", pair, isCorrect ? "correct" : "wrong");
+  saveMeaningMatchProgress();
+  renderMeaningMatchQuiz();
+  renderCoinChallenges();
+}
+
+function renderMeaningMatchResult(pair) {
+  const choice = meaningMatchQuizState.currentChoices[meaningMatchQuizState.selectedIndex];
+  const isCorrect = Boolean(choice?.isCorrect);
+  const correctChoice = meaningMatchQuizState.currentChoices.find((item) => item.isCorrect);
+  const correctSentence = correctChoice?.sentence || getMeaningMatchCorrectSentence(pair);
+  els.nounVerbResult.classList.remove("hidden", "success", "error");
+  els.nounVerbResult.classList.add(isCorrect ? "success" : "error");
+  els.nounVerbResult.innerHTML = isCorrect
+    ? `
+      <span class="quiz-result-label">✅ Correct</span>
+      <span class="quiz-result-meaning">${escapeHtml(getMeaningMatchMeaning(pair))}</span>
+      <span class="quiz-result-answer">${escapeHtml(pair.phrase)}</span>
+      <span class="quiz-result-meaning"><strong>Example:</strong> ${escapeHtml(correctSentence)}</span>
+      <span class="quiz-result-reward"><strong>Reward:</strong> 🪙🪙🪙 +3 Coins</span>
+    `
+    : `
+      <span class="quiz-result-label">❌ Wrong</span>
+      <span class="quiz-result-correction">Correct answer:</span>
+      <span class="quiz-result-answer">${escapeHtml(correctSentence)}</span>
+      <span class="quiz-result-meaning"><strong>Meaning:</strong> ${escapeHtml(getMeaningMatchMeaning(pair))}</span>
+    `;
+  els.nounVerbOptions.querySelectorAll("button").forEach((button) => {
+    const index = Number(button.dataset.meaningChoice);
+    const option = meaningMatchQuizState.currentChoices[index];
+    button.disabled = true;
+    button.classList.toggle("correct", Boolean(option?.isCorrect));
+    button.classList.toggle("incorrect", index === meaningMatchQuizState.selectedIndex && !option?.isCorrect);
+  });
+  els.nounVerbNext.classList.add("hidden");
+}
+
+function moveMeaningMatchCard(direction) {
+  if (!visibleMeaningMatchPairs.length) return;
+  if (direction > 0) applyMeaningMatchSmartOrder();
+  meaningMatchCurrentIndex = direction > 0
+    ? (meaningMatchCurrentIndex + 1) % visibleMeaningMatchPairs.length
+    : (meaningMatchCurrentIndex - 1 + visibleMeaningMatchPairs.length) % visibleMeaningMatchPairs.length;
+  generateMeaningMatchQuestion(direction > 0 ? "next/skip" : "previous", meaningMatchCurrentIndex);
+  renderMeaningMatchQuiz();
+}
+
+function applyMeaningMatchSmartOrder() {
+  const currentQuestionId = meaningMatchQuizState.currentQuestionId;
+  visibleMeaningMatchPairs = applyMeaningMatchPriorityOrder(nounVerbPairs);
+  const currentQuestionIndex = visibleMeaningMatchPairs.findIndex((pair) => pair.id === currentQuestionId);
+  meaningMatchCurrentIndex = currentQuestionIndex >= 0
+    ? currentQuestionIndex
+    : clamp(meaningMatchCurrentIndex, 0, Math.max(visibleMeaningMatchPairs.length - 1, 0));
+}
+
 function getNextNounVerbIndex() {
   if (visibleNounVerbPairs.length < 2) return nounVerbCurrentIndex;
   const recentIds = new Set(recentNounVerbQuestionIds);
@@ -2990,6 +3268,29 @@ function getNounVerbPriorityRank(pair) {
   return 3;
 }
 
+function applyMeaningMatchPriorityOrder(pairList) {
+  const wrongRecent = [];
+  const newPairs = [];
+  const learned = [];
+  const mastered = [];
+
+  pairList.forEach((pair) => {
+    const status = getMeaningMatchStatus(pair);
+    if (isMeaningMatchWrongRecently(pair)) wrongRecent.push(pair);
+    else if (status === "new") newPairs.push(pair);
+    else if (status === "learned") learned.push(pair);
+    else mastered.push(pair);
+  });
+
+  wrongRecent.sort((first, second) => getMeaningMatchLastWrongMs(second) - getMeaningMatchLastWrongMs(first));
+  const randomizedNewPairs = shuffleCards(newPairs);
+  const randomizedLearned = shuffleCards(learned).sort((first, second) => getMeaningMatchProgressEntry(first).correctCount - getMeaningMatchProgressEntry(second).correctCount);
+  const randomizedMastered = shuffleCards(mastered).sort((first, second) => getMeaningMatchLastAnsweredMs(first) - getMeaningMatchLastAnsweredMs(second));
+  const mainReview = [...wrongRecent, ...randomizedNewPairs, ...randomizedLearned];
+  if (!mainReview.length) return randomizedMastered;
+  return [...mainReview, ...randomizedMastered.filter((_, index) => index % 6 === 0)];
+}
+
 function compareNounVerbPairs(first, second) {
   return getSortKey(first.noun).localeCompare(getSortKey(second.noun), "de") || first.phrase.localeCompare(second.phrase, "de");
 }
@@ -3059,6 +3360,77 @@ function getNounVerbSummary() {
   return nounVerbPairs.reduce(
     (total, pair) => {
       total[getNounVerbStatus(pair)] += 1;
+      return total;
+    },
+    { new: 0, learned: 0, mastered: 0 }
+  );
+}
+
+function updateMeaningMatchLearningProgress(pair, isCorrect) {
+  const previous = getMeaningMatchProgressEntry(pair);
+  const now = new Date().toISOString();
+  const correctCount = previous.correctCount + (isCorrect ? 1 : 0);
+  const wrongCount = previous.wrongCount + (isCorrect ? 0 : 1);
+  const status = isCorrect
+    ? correctCount >= 3 ? "mastered" : "learned"
+    : previous.status;
+
+  meaningMatchProgress[pair.id] = {
+    ...previous,
+    correctCount,
+    wrongCount,
+    lastAnsweredAt: now,
+    lastWrongAt: isCorrect ? previous.lastWrongAt || "" : now,
+    status,
+    updatedAt: now
+  };
+}
+
+function getMeaningMatchProgressEntry(pair) {
+  const entry = meaningMatchProgress[pair.id] || {};
+  const correctCount = normalizeCounter(entry.correctCount);
+  const wrongCount = normalizeCounter(entry.wrongCount);
+  return {
+    ...entry,
+    correctCount,
+    wrongCount,
+    lastAnsweredAt: typeof entry.lastAnsweredAt === "string"
+      ? entry.lastAnsweredAt
+      : typeof entry.updatedAt === "string" ? entry.updatedAt : "",
+    lastWrongAt: typeof entry.lastWrongAt === "string"
+      ? entry.lastWrongAt
+      : wrongCount > 0 && typeof entry.updatedAt === "string" ? entry.updatedAt : "",
+    status: normalizeNounVerbStatus(entry.status, { correctCount })
+  };
+}
+
+function getMeaningMatchStatus(pair) {
+  return getMeaningMatchProgressEntry(pair).status;
+}
+
+function getMeaningMatchLastAnsweredMs(pair) {
+  const lastAnswered = Date.parse(getMeaningMatchProgressEntry(pair).lastAnsweredAt);
+  return Number.isFinite(lastAnswered) ? lastAnswered : 0;
+}
+
+function getMeaningMatchLastWrongMs(pair) {
+  const lastWrong = Date.parse(getMeaningMatchProgressEntry(pair).lastWrongAt);
+  return Number.isFinite(lastWrong) ? lastWrong : 0;
+}
+
+function isMeaningMatchWrongRecently(pair) {
+  const entry = getMeaningMatchProgressEntry(pair);
+  if (!entry.wrongCount || entry.status === "mastered") return false;
+  const lastWrong = getMeaningMatchLastWrongMs(pair);
+  if (!lastWrong) return false;
+  const sevenDays = 7 * 24 * 60 * 60 * 1000;
+  return Date.now() - lastWrong <= sevenDays;
+}
+
+function getMeaningMatchSummary() {
+  return nounVerbPairs.reduce(
+    (total, pair) => {
+      total[getMeaningMatchStatus(pair)] += 1;
       return total;
     },
     { new: 0, learned: 0, mastered: 0 }
@@ -3248,6 +3620,16 @@ function loadNounVerbProgress() {
 function saveNounVerbProgress() {
   if (!currentProfileId) return;
   getCurrentProfile().nounVerbProgress = nounVerbProgress;
+  saveProfileStore();
+}
+
+function loadMeaningMatchProgress() {
+  return getCurrentProfile()?.meaningMatchProgress || {};
+}
+
+function saveMeaningMatchProgress() {
+  if (!currentProfileId) return;
+  getCurrentProfile().meaningMatchProgress = meaningMatchProgress;
   saveProfileStore();
 }
 
