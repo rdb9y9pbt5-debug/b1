@@ -8,7 +8,7 @@
     <meta name="apple-mobile-web-app-title" content="SprachQuest">
     <meta name="apple-mobile-web-app-status-bar-style" content="default">
     <title>SprachQuest</title>
-    <link rel="stylesheet" href="style.css?v=62">
+    <link rel="stylesheet" href="style.css?v=63">
   </head>
   <body>
     <section class="lock-screen" id="lockScreen" aria-label="Password required">
@@ -184,10 +184,18 @@
         <section class="achievements-card" aria-label="Achievements">
           <div class="section-heading">
             <h3>🏅 Achievements</h3>
-            <p>Badges unlock as you study.</p>
+            <button class="small-link-button" type="button" data-dashboard-action="achievements">Collection</button>
           </div>
-          <article class="next-achievement-card" id="nextAchievementCard" aria-label="Next achievement"></article>
-          <div class="achievements-grid" id="achievementsGrid"></div>
+          <div class="achievement-summary">
+            <section aria-label="Recently earned achievements">
+              <h4>🏆 Recently Earned</h4>
+              <div class="achievement-strip" id="recentAchievements"></div>
+            </section>
+            <section aria-label="Next achievement goals">
+              <h4>⭐ Next Goals</h4>
+              <div class="achievement-strip" id="nextAchievements"></div>
+            </section>
+          </div>
         </section>
 
         <div class="dashboard-actions" aria-label="Dashboard actions">
@@ -196,6 +204,18 @@
           <button type="button" data-dashboard-action="search">Search Vocabulary</button>
           <button type="button" data-dashboard-action="statistics">Statistics</button>
         </div>
+      </section>
+
+      <section class="achievement-collection-screen hidden" id="achievementCollectionScreen" aria-label="Achievement collection">
+        <div class="dashboard-heading">
+          <span class="brand-mark" aria-hidden="true">🏆</span>
+          <div>
+            <p class="eyebrow">Achievements</p>
+            <h2>Achievement Collection</h2>
+            <p>Browse unlocked and locked badges.</p>
+          </div>
+        </div>
+        <div class="achievements-grid collection-grid" id="achievementsGrid"></div>
       </section>
 
       <section class="coin-challenges-screen hidden" id="coinChallengesScreen" aria-label="Coin challenges">
@@ -463,6 +483,6 @@
       </footer>
     </main>
 
-    <script type="module" src="script.js?v=62"></script>
+    <script type="module" src="script.js?v=63"></script>
   </body>
 </html>

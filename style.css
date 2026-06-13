@@ -470,6 +470,7 @@ h1 {
 }
 
 .dashboard-screen,
+.achievement-collection-screen,
 .coin-challenges-screen {
   grid-row: 2 / 6;
   min-height: 0;
@@ -951,10 +952,46 @@ h1 {
   font-weight: 750;
 }
 
+.small-link-button {
+  min-height: 34px;
+  border: 1px solid rgba(109, 74, 160, 0.28);
+  background: var(--violet-soft);
+  color: var(--violet);
+  padding: 0 10px;
+  font-size: 0.82rem;
+  font-weight: 900;
+}
+
 .achievements-grid {
   display: grid;
   grid-template-columns: repeat(3, minmax(0, 1fr));
   gap: 8px;
+}
+
+.achievement-summary {
+  display: grid;
+  gap: 10px;
+}
+
+.achievement-summary section {
+  display: grid;
+  gap: 7px;
+}
+
+.achievement-summary h4 {
+  margin: 0;
+  color: var(--ink);
+  font-size: 0.92rem;
+}
+
+.achievement-strip {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 8px;
+}
+
+.collection-grid {
+  grid-template-columns: repeat(3, minmax(0, 1fr));
 }
 
 .next-achievement-card {
@@ -994,6 +1031,20 @@ h1 {
   grid-template-columns: auto minmax(0, 1fr);
   gap: 8px;
   align-items: start;
+}
+
+.achievement-badge.compact {
+  padding: 9px;
+  gap: 7px;
+}
+
+.achievement-badge.compact strong {
+  font-size: 0.84rem;
+}
+
+.achievement-badge.compact span,
+.achievement-badge.compact small {
+  font-size: 0.7rem;
 }
 
 .achievement-badge.unlocked {
@@ -1703,6 +1754,10 @@ select,
   }
 
   .achievements-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .achievement-strip {
     grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 

@@ -310,6 +310,7 @@ const els = {
   familyWealthProgressText: document.querySelector("#familyWealthProgressText"),
   appShell: document.querySelector("#appShell"),
   dashboardScreen: document.querySelector("#dashboardScreen"),
+  achievementCollectionScreen: document.querySelector("#achievementCollectionScreen"),
   coinChallengesScreen: document.querySelector("#coinChallengesScreen"),
   dashboardAvatar: document.querySelector("#dashboardAvatar"),
   dashboardWelcome: document.querySelector("#dashboardWelcome"),
@@ -321,7 +322,8 @@ const els = {
   dashboardNounVerbNew: document.querySelector("#dashboardNounVerbNew"),
   dashboardNounVerbLearned: document.querySelector("#dashboardNounVerbLearned"),
   dashboardNounVerbMastered: document.querySelector("#dashboardNounVerbMastered"),
-  nextAchievementCard: document.querySelector("#nextAchievementCard"),
+  recentAchievements: document.querySelector("#recentAchievements"),
+  nextAchievements: document.querySelector("#nextAchievements"),
   achievementsGrid: document.querySelector("#achievementsGrid"),
   challengeArticleNew: document.querySelector("#challengeArticleNew"),
   challengeArticleLearned: document.querySelector("#challengeArticleLearned"),
@@ -1019,6 +1021,8 @@ function refreshVisibleProfileState() {
   els.currentProfileLabel.textContent = `${profile.emoji} ${profile.name}`;
   if (currentView === "dashboard") {
     renderDashboard();
+  } else if (currentView === "achievements") {
+    renderAchievementCollection();
   } else if (currentView === "coin-challenges") {
     renderCoinChallenges();
   } else if (currentView === "noun-verb") {
@@ -1090,6 +1094,7 @@ function showDashboard() {
   els.appShell.classList.remove("clean-quiz-mode");
   renderDashboard();
   els.dashboardScreen.classList.remove("hidden");
+  els.achievementCollectionScreen.classList.add("hidden");
   els.coinChallengesScreen.classList.add("hidden");
   els.controlPanel.classList.add("hidden");
   els.searchPanel.classList.add("hidden");
@@ -1105,7 +1110,24 @@ function showCoinChallenges() {
   els.appShell.classList.remove("clean-quiz-mode");
   renderCoinChallenges();
   els.dashboardScreen.classList.add("hidden");
+  els.achievementCollectionScreen.classList.add("hidden");
   els.coinChallengesScreen.classList.remove("hidden");
+  els.controlPanel.classList.add("hidden");
+  els.searchPanel.classList.add("hidden");
+  els.statsGrid.classList.add("hidden");
+  els.studyStage.classList.add("hidden");
+  els.nounVerbStage.classList.add("hidden");
+  els.actionBar.classList.add("hidden");
+}
+
+function showAchievementCollection() {
+  currentView = "achievements";
+  els.appShell.classList.remove("clean-article-practice");
+  els.appShell.classList.remove("clean-quiz-mode");
+  renderAchievementCollection();
+  els.dashboardScreen.classList.add("hidden");
+  els.achievementCollectionScreen.classList.remove("hidden");
+  els.coinChallengesScreen.classList.add("hidden");
   els.controlPanel.classList.add("hidden");
   els.searchPanel.classList.add("hidden");
   els.statsGrid.classList.add("hidden");
@@ -1118,6 +1140,7 @@ function showStudyView(options = {}) {
   currentView = "study";
   const cleanArticlePractice = els.modeSelect.value === "article" && !options.focusSearch && !options.openStats;
   els.dashboardScreen.classList.add("hidden");
+  els.achievementCollectionScreen.classList.add("hidden");
   els.coinChallengesScreen.classList.add("hidden");
   els.nounVerbStage.classList.add("hidden");
   els.appShell.classList.toggle("clean-article-practice", cleanArticlePractice);
@@ -1142,6 +1165,7 @@ function showNounVerbQuiz() {
   els.appShell.classList.remove("clean-article-practice");
   els.appShell.classList.add("clean-quiz-mode");
   els.dashboardScreen.classList.add("hidden");
+  els.achievementCollectionScreen.classList.add("hidden");
   els.coinChallengesScreen.classList.add("hidden");
   els.controlPanel.classList.add("hidden");
   els.searchPanel.classList.add("hidden");
@@ -1249,12 +1273,24 @@ function renderCoinLeaderboard() {
 }
 
 function renderAchievements() {
+  if (!profileStore || !currentProfileId) return;
+  renderDashboardAchievements(getAchievementStates());
+}
+
+function renderAchievementCollection() {
   if (!els.achievementsGrid || !profileStore || !currentProfileId) return;
+  const achievementStates = getAchievementStates();
+  els.achievementsGrid.replaceChildren(
+    ...achievementStates.map(({ achievement, unlocked, progress }) => createAchievementCard(achievement, unlocked, progress))
+  );
+}
+
+function getAchievementStates() {
   promoteFamilyAchievements(profileStore);
   const profile = getCurrentProfile();
   const profileUnlocked = new Set(getPersonalAchievementIds(profile));
   const familyUnlocked = new Set(getFamilyAchievementIds(profileStore));
-  const achievementStates = ACHIEVEMENTS.map((achievement) => {
+  return ACHIEVEMENTS.map((achievement) => {
     const storedUnlocked = achievement.scope === "family"
       ? familyUnlocked.has(achievement.id)
       : profileUnlocked.has(achievement.id);
@@ -1262,50 +1298,83 @@ function renderAchievements() {
     const unlocked = storedUnlocked || progress.isComplete;
     return { achievement, unlocked, progress };
   });
+}
 
-  renderNextAchievement(achievementStates);
+function renderDashboardAchievements(achievementStates) {
+  if (!els.recentAchievements || !els.nextAchievements) return;
+  const recentAchievements = getRecentlyEarnedAchievements(achievementStates);
+  const nextGoals = getNextGoalAchievements(achievementStates);
 
-  els.achievementsGrid.replaceChildren(
-    ...achievementStates.map(({ achievement, unlocked, progress }) => {
-      const badge = document.createElement("article");
-      badge.className = "achievement-badge";
-      badge.classList.toggle("unlocked", unlocked);
-      badge.classList.toggle("locked", !unlocked);
-      badge.replaceChildren(
-        createTextElement("span", "achievement-icon", unlocked ? `✓ ${achievement.icon}` : achievement.icon || "🔒"),
-        createAchievementBody(achievement, unlocked, progress)
-      );
-      return badge;
-    })
+  els.recentAchievements.replaceChildren(
+    ...(recentAchievements.length
+      ? recentAchievements.map(({ achievement, unlocked, progress }) => createAchievementCard(achievement, unlocked, progress, { compact: true }))
+      : [createEmptyAchievementCard("No achievements earned yet.")]
+    )
+  );
+
+  els.nextAchievements.replaceChildren(
+    ...(nextGoals.length
+      ? nextGoals.map(({ achievement, unlocked, progress }) => createAchievementCard(achievement, unlocked, progress, { compact: true }))
+      : [createEmptyAchievementCard("All current goals unlocked.")]
+    )
   );
 }
 
-function renderNextAchievement(achievementStates) {
-  if (!els.nextAchievementCard) return;
-  const nextAchievement = achievementStates
-    .filter(({ achievement, unlocked, progress }) => !achievement.testOnly && !unlocked && progress.target > 0)
-    .sort((first, second) => {
-      const firstRemaining = first.progress.target - first.progress.current;
-      const secondRemaining = second.progress.target - second.progress.current;
-      return firstRemaining - secondRemaining || second.progress.percent - first.progress.percent;
-    })[0];
-
-  if (!nextAchievement) {
-    els.nextAchievementCard.replaceChildren(
-      createTextElement("span", "next-achievement-label", "⭐ Next Achievement"),
-      createTextElement("strong", "", "All current achievements unlocked"),
-      createTextElement("small", "", "More goals can be added later.")
-    );
-    return;
-  }
-
-  const { achievement, progress } = nextAchievement;
-  els.nextAchievementCard.replaceChildren(
-    createTextElement("span", "next-achievement-label", "⭐ Next Achievement"),
-    createTextElement("strong", "", `${achievement.icon} ${achievement.name}`),
-    createTextElement("small", "", `${progress.current} / ${progress.target}`),
-    createProgressBar(progress.percent)
+function createAchievementCard(achievement, unlocked, progress, options = {}) {
+  const badge = document.createElement("article");
+  badge.className = "achievement-badge";
+  badge.classList.toggle("compact", options.compact === true);
+  badge.classList.toggle("unlocked", unlocked);
+  badge.classList.toggle("locked", !unlocked);
+  badge.replaceChildren(
+    createTextElement("span", "achievement-icon", unlocked ? `✓ ${achievement.icon}` : achievement.icon || "🔒"),
+    createAchievementBody(achievement, unlocked, progress)
   );
+  return badge;
+}
+
+function createEmptyAchievementCard(message) {
+  const badge = document.createElement("article");
+  badge.className = "achievement-badge compact locked";
+  badge.replaceChildren(
+    createTextElement("span", "achievement-icon", "○"),
+    createTextElement("small", "", message)
+  );
+  return badge;
+}
+
+function getRecentlyEarnedAchievements(achievementStates) {
+  const profile = getCurrentProfile();
+  const personalOrder = getPersonalAchievementIds(profile);
+  const familyOrder = getFamilyAchievementIds(profileStore);
+  const recentIds = [...personalOrder, ...familyOrder].slice(-6).reverse();
+  return recentIds
+    .map((achievementId) => achievementStates.find(({ achievement, unlocked }) => achievement.id === achievementId && unlocked))
+    .filter(Boolean)
+    .filter(({ achievement }, index, list) => list.findIndex((item) => item.achievement.id === achievement.id) === index)
+    .slice(0, 3);
+}
+
+function getNextGoalAchievements(achievementStates) {
+  const lockedGoals = achievementStates
+    .filter(({ achievement, unlocked, progress }) => !achievement.testOnly && !unlocked && progress.target > 0);
+  return [
+    getClosestAchievementByMetric(lockedGoals, ["coins"]),
+    getClosestAchievementByMetric(lockedGoals, ["familyCoins"]),
+    getClosestAchievementByMetric(lockedGoals, ["articlesMastered", "nounVerbCorrect", "streak", "correctAnswers"])
+  ].filter(Boolean);
+}
+
+function getClosestAchievementByMetric(achievementStates, metrics) {
+  return achievementStates
+    .filter(({ achievement }) => metrics.includes(achievement.metric))
+    .sort(compareAchievementProgress)[0] || null;
+}
+
+function compareAchievementProgress(first, second) {
+  const firstRemaining = first.progress.target - first.progress.current;
+  const secondRemaining = second.progress.target - second.progress.current;
+  return firstRemaining - secondRemaining || second.progress.percent - first.progress.percent;
 }
 
 function createAchievementBody(achievement, unlocked, progress) {
@@ -1498,6 +1567,11 @@ function getDisplayStreak(profile) {
 }
 
 function handleDashboardAction(action) {
+  if (action === "achievements") {
+    showAchievementCollection();
+    return;
+  }
+
   if (action === "restart-vocabulary") {
     if (!confirmAndResetSavedPosition("vocabulary")) return;
     openStudyRoute({ mode: "de-en", filter: "all", resume: false });
@@ -2475,6 +2549,7 @@ async function testPersonalAchievement() {
   saveProfileStore();
   await saveProfileStoreToCloudNow();
   renderAchievements();
+  if (currentView === "achievements") renderAchievementCollection();
   renderCoinLeaderboard();
   renderAchievementDebugPanel();
 }
@@ -2497,6 +2572,7 @@ async function testFamilyAchievement() {
   saveProfileStore();
   await saveProfileStoreToCloudNow();
   renderAchievements();
+  if (currentView === "achievements") renderAchievementCollection();
   renderAchievementDebugPanel();
 }
 
