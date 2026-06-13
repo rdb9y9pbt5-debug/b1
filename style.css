@@ -612,6 +612,7 @@ h1 {
 
 .challenge-card {
   background: linear-gradient(135deg, var(--green-soft), rgba(255, 253, 248, 0.94));
+  gap: 7px;
 }
 
 .streak-card {
@@ -663,14 +664,6 @@ h1 {
   line-height: 1;
 }
 
-.challenge-card > p {
-  color: var(--ink);
-  font-size: clamp(1.55rem, 4vw, 2.25rem);
-  font-weight: 900;
-  line-height: 1;
-  overflow-wrap: anywhere;
-}
-
 .challenge-heading {
   display: flex;
   justify-content: space-between;
@@ -686,9 +679,28 @@ h1 {
 
 .challenge-heading strong {
   color: var(--green);
-  font-size: 0.78rem;
+  font-size: clamp(0.78rem, 1.4vw, 0.92rem);
+  font-weight: 900;
+  line-height: 1.15;
   white-space: normal;
   text-align: right;
+}
+
+.challenge-card .challenge-description {
+  color: var(--violet);
+  font-size: clamp(0.82rem, 1.5vw, 0.98rem);
+  font-weight: 700;
+  line-height: 1.18;
+  margin: 0;
+  overflow-wrap: anywhere;
+}
+
+.challenge-card #challengeStatus {
+  color: var(--muted);
+  font-size: clamp(0.78rem, 1.35vw, 0.9rem);
+  font-weight: 800;
+  line-height: 1.15;
+  margin: 0;
 }
 
 .progress-track {
@@ -1857,8 +1869,12 @@ select,
     line-height: 1.15;
   }
 
-  .challenge-card > p {
-    font-size: clamp(1.35rem, 8vw, 1.9rem);
+  .challenge-card .challenge-description {
+    font-size: 0.86rem;
+  }
+
+  .challenge-card #challengeStatus {
+    font-size: 0.8rem;
   }
 
   .challenge-card .progress-track {

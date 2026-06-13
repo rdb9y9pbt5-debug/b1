@@ -1036,12 +1036,12 @@ function renderDashboard() {
     ? "🎉 Daily Challenge Complete!"
     : `${dailyChallenge.icon} ${dailyChallenge.name}`;
   els.challengeDescription.textContent = challenge.completed
-    ? `Challenge: ${dailyChallenge.icon} ${dailyChallenge.name}`
+    ? `${dailyChallenge.icon} ${dailyChallenge.name}`
     : dailyChallenge.description;
   els.challengeReward.textContent = challenge.completed
     ? `Reward: 🪙 +${dailyChallenge.reward} Coins Earned`
     : `Reward: 🪙 +${dailyChallenge.reward} Coins`;
-  els.challengeStatus.textContent = `Progress: ${challengeProgress.current} / ${dailyChallenge.goal}`;
+  els.challengeStatus.textContent = `${challengeProgress.current} / ${dailyChallenge.goal}`;
   els.challengeProgressFill.style.width = `${Math.min((challengeProgress.current / dailyChallenge.goal) * 100, 100)}%`;
   els.streakCurrent.textContent = `${streak.current} ${streak.current === 1 ? "Day" : "Days"}`;
   els.streakBest.textContent = `Best: ${streak.best} days`;
