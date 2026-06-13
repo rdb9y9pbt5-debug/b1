@@ -743,6 +743,7 @@ function showProfileScreen() {
   progress = {};
   articleProgress = {};
   nounVerbProgress = {};
+  els.appShell.classList.remove("clean-article-practice");
   els.appShell.classList.add("locked");
   els.profileScreen.classList.remove("hidden");
   renderProfileCards();
@@ -793,6 +794,7 @@ function saveSettings() {
 
 function showDashboard() {
   currentView = "dashboard";
+  els.appShell.classList.remove("clean-article-practice");
   renderDashboard();
   els.dashboardScreen.classList.remove("hidden");
   els.coinChallengesScreen.classList.add("hidden");
@@ -806,6 +808,7 @@ function showDashboard() {
 
 function showCoinChallenges() {
   currentView = "coin-challenges";
+  els.appShell.classList.remove("clean-article-practice");
   renderCoinChallenges();
   els.dashboardScreen.classList.add("hidden");
   els.coinChallengesScreen.classList.remove("hidden");
@@ -819,12 +822,14 @@ function showCoinChallenges() {
 
 function showStudyView(options = {}) {
   currentView = "study";
+  const cleanArticlePractice = els.modeSelect.value === "article" && !options.focusSearch && !options.openStats;
   els.dashboardScreen.classList.add("hidden");
   els.coinChallengesScreen.classList.add("hidden");
   els.nounVerbStage.classList.add("hidden");
-  els.controlPanel.classList.toggle("hidden", options.hideControls === true);
-  els.searchPanel.classList.remove("hidden");
-  els.statsGrid.classList.remove("hidden");
+  els.appShell.classList.toggle("clean-article-practice", cleanArticlePractice);
+  els.controlPanel.classList.toggle("hidden", options.hideControls === true || cleanArticlePractice);
+  els.searchPanel.classList.toggle("hidden", cleanArticlePractice);
+  els.statsGrid.classList.toggle("hidden", cleanArticlePractice);
   els.studyStage.classList.remove("hidden");
   els.actionBar.classList.remove("hidden");
   if (options.focusSearch) {
@@ -839,6 +844,7 @@ function showStudyView(options = {}) {
 
 function showNounVerbQuiz() {
   currentView = "noun-verb";
+  els.appShell.classList.remove("clean-article-practice");
   els.dashboardScreen.classList.add("hidden");
   els.coinChallengesScreen.classList.add("hidden");
   els.controlPanel.classList.add("hidden");

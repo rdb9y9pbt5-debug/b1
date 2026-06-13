@@ -1035,6 +1035,57 @@ select,
   display: grid;
 }
 
+.clean-article-practice .study-stage {
+  grid-row: 2 / 6;
+  min-height: 0;
+  align-items: stretch;
+}
+
+.clean-article-practice .flashcard {
+  min-height: 0;
+  padding: clamp(24px, 4vw, 46px);
+  grid-template-rows: auto minmax(150px, 1fr) auto auto;
+  place-self: stretch;
+}
+
+.clean-article-practice .card-meta {
+  justify-content: center;
+}
+
+.clean-article-practice #cardCounter {
+  display: none;
+}
+
+.clean-article-practice #cardMode {
+  color: var(--violet);
+  font-size: clamp(1.05rem, 2.4vw, 1.45rem);
+}
+
+.clean-article-practice .question-area {
+  align-self: center;
+  gap: 14px;
+}
+
+.clean-article-practice #promptLabel {
+  color: var(--blue);
+  font-size: clamp(1rem, 2.4vw, 1.3rem);
+}
+
+.clean-article-practice #questionText {
+  font-size: clamp(4rem, 10vw, 7.2rem);
+}
+
+.clean-article-practice .article-guess {
+  max-width: 720px;
+  width: 100%;
+  justify-self: center;
+}
+
+.clean-article-practice .article-guess button {
+  min-height: 76px;
+  font-size: clamp(1.35rem, 3vw, 1.8rem);
+}
+
 .flashcard,
 .noun-verb-card {
   min-height: 0;
@@ -1508,9 +1559,23 @@ select,
     grid-template-rows: auto auto auto auto auto auto;
   }
 
+  .app-shell.clean-article-practice {
+    height: 100dvh;
+    min-height: 0;
+    overflow: hidden;
+    gap: 8px;
+    grid-template-rows: auto minmax(0, 1fr) auto;
+  }
+
   .study-stage {
     min-height: auto;
     overflow: visible;
+  }
+
+  .clean-article-practice .study-stage {
+    grid-row: auto;
+    min-height: 0;
+    overflow: hidden;
   }
 
   .flashcard {
@@ -1519,6 +1584,58 @@ select,
     max-height: none;
     overflow: visible;
     grid-template-rows: auto auto auto auto;
+  }
+
+  .clean-article-practice .flashcard {
+    height: 100%;
+    min-height: 0;
+    overflow: hidden;
+    padding: 16px 12px;
+    gap: 10px;
+    grid-template-rows: auto minmax(0, 1fr) auto;
+  }
+
+  .clean-article-practice .flashcard.quiz-result-visible {
+    overflow-y: auto;
+    grid-template-rows: auto auto auto;
+    -webkit-overflow-scrolling: touch;
+  }
+
+  .clean-article-practice .question-area {
+    align-self: center;
+    gap: 8px;
+  }
+
+  .clean-article-practice #cardMode {
+    font-size: 1rem;
+  }
+
+  .clean-article-practice #promptLabel {
+    font-size: 0.82rem;
+  }
+
+  .clean-article-practice #questionText {
+    font-size: clamp(3.2rem, 17vw, 5.1rem);
+    line-height: 0.98;
+  }
+
+  .clean-article-practice .article-guess {
+    gap: 8px;
+  }
+
+  .clean-article-practice .article-guess button {
+    min-height: 58px;
+    font-size: 1.15rem;
+  }
+
+  .clean-article-practice .action-bar {
+    display: grid;
+    grid-template-columns: 1fr;
+    gap: 0;
+  }
+
+  .clean-article-practice .nav-buttons button {
+    min-height: 48px;
   }
 
   .flashcard.quiz-result-visible {
