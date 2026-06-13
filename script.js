@@ -24,7 +24,7 @@ const DAILY_CHALLENGES = [
     id: "article-apprentice",
     icon: "🏷",
     name: "Article Apprentice",
-    description: "20 article questions",
+    description: "Answer 20 article questions.",
     metric: "articleQuestions",
     goal: 20,
     reward: 10
@@ -33,7 +33,7 @@ const DAILY_CHALLENGES = [
     id: "article-expert",
     icon: "🏷",
     name: "Article Expert",
-    description: "50 article questions",
+    description: "Answer 50 article questions.",
     metric: "articleQuestions",
     goal: 50,
     reward: 25
@@ -42,7 +42,7 @@ const DAILY_CHALLENGES = [
     id: "accuracy-challenge",
     icon: "🎯",
     name: "Accuracy Challenge",
-    description: "10 correct article answers",
+    description: "Get 10 article questions correct.",
     metric: "correctArticleAnswers",
     goal: 10,
     reward: 15
@@ -51,7 +51,7 @@ const DAILY_CHALLENGES = [
     id: "consistency-challenge",
     icon: "🔥",
     name: "Consistency Challenge",
-    description: "30 article questions",
+    description: "Answer 30 article questions.",
     metric: "articleQuestions",
     goal: 30,
     reward: 15
@@ -60,7 +60,7 @@ const DAILY_CHALLENGES = [
     id: "quick-practice",
     icon: "⚡",
     name: "Quick Practice",
-    description: "15 article questions",
+    description: "Answer 15 article questions.",
     metric: "articleQuestions",
     goal: 15,
     reward: 8
@@ -69,7 +69,7 @@ const DAILY_CHALLENGES = [
     id: "marathon-challenge",
     icon: "🏆",
     name: "Marathon Challenge",
-    description: "75 article questions",
+    description: "Answer 75 article questions.",
     metric: "articleQuestions",
     goal: 75,
     reward: 40
@@ -966,13 +966,15 @@ function renderDashboard() {
   const dailyChallenge = getDailyChallengeForDate(challenge.date);
   const challengeProgress = getDailyChallengeProgress(challenge, dailyChallenge);
   els.challengeTitle.textContent = challenge.completed
-    ? `✅ ${dailyChallenge.name}`
+    ? "🎉 Daily Challenge Complete!"
     : `${dailyChallenge.icon} ${dailyChallenge.name}`;
-  els.challengeDescription.textContent = dailyChallenge.description;
+  els.challengeDescription.textContent = challenge.completed
+    ? `Challenge: ${dailyChallenge.icon} ${dailyChallenge.name}`
+    : dailyChallenge.description;
   els.challengeReward.textContent = challenge.completed
-    ? `+${dailyChallenge.reward} Coins Earned`
-    : `Reward: +${dailyChallenge.reward} coins`;
-  els.challengeStatus.textContent = `${challengeProgress.current} / ${dailyChallenge.goal}`;
+    ? `Reward: 🪙 +${dailyChallenge.reward} Coins Earned`
+    : `Reward: 🪙 +${dailyChallenge.reward} Coins`;
+  els.challengeStatus.textContent = `Progress: ${challengeProgress.current} / ${dailyChallenge.goal}`;
   els.challengeProgressFill.style.width = `${Math.min((challengeProgress.current / dailyChallenge.goal) * 100, 100)}%`;
   els.streakCurrent.textContent = `${streak.current} ${streak.current === 1 ? "Day" : "Days"}`;
   els.streakBest.textContent = `Best: ${streak.best} days`;
@@ -1998,6 +2000,15 @@ function showFamilyLevelCelebration(level) {
   els.levelCelebration.classList.remove("hidden");
 }
 
+function showDailyChallengeComplete(challenge) {
+  els.levelCelebrationTitle.textContent = "🎉 Daily Challenge Complete!";
+  els.levelCelebrationProfile.textContent = "Challenge:";
+  els.levelCelebrationLevel.textContent = `${challenge.icon} ${challenge.name}`;
+  els.levelCelebrationBonus.textContent = `Reward: 🪙 +${challenge.reward} Coins`;
+  els.levelCelebrationBonus.classList.remove("hidden");
+  els.levelCelebration.classList.remove("hidden");
+}
+
 function recordDailyActivity(type, details = {}) {
   if (!currentProfileId) return;
   const profile = getCurrentProfile();
@@ -2012,6 +2023,7 @@ function recordDailyActivity(type, details = {}) {
     if (!profile.dailyChallenge.completed && challengeProgress.raw >= dailyChallenge.goal) {
       profile.dailyChallenge.completed = true;
       awardCoins(dailyChallenge.reward);
+      showDailyChallengeComplete(dailyChallenge);
     }
   }
 
@@ -2695,11 +2707,42 @@ function getDailyChallengeForDate(date = getTodayKey()) {
 
 function getStableDailyChallengeIndex(date) {
   const key = String(date || getTodayKey());
+  if (DAILY_CHALLENGES.length < 2) return getRawDailyChallengeIndex(key);
+  const baseIndex = getRawDailyChallengeIndex(key);
+  const previousIndex = getAdjustedPreviousDailyChallengeIndex(key);
+  if (baseIndex !== previousIndex) return baseIndex;
+  return (baseIndex + 1) % DAILY_CHALLENGES.length;
+}
+
+function getAdjustedPreviousDailyChallengeIndex(dateKey) {
+  const previousDate = shiftDateKey(dateKey, -1);
+  const previousBaseIndex = getRawDailyChallengeIndex(previousDate);
+  const previousPreviousIndex = getRawDailyChallengeIndex(shiftDateKey(previousDate, -1));
+  return previousBaseIndex === previousPreviousIndex
+    ? (previousBaseIndex + 1) % DAILY_CHALLENGES.length
+    : previousBaseIndex;
+}
+
+function getRawDailyChallengeIndex(dateKey) {
+  return getStableHash(dateKey) % DAILY_CHALLENGES.length;
+}
+
+function getStableHash(key) {
   let hash = 0;
   for (let index = 0; index < key.length; index += 1) {
     hash = (hash * 31 + key.charCodeAt(index)) >>> 0;
   }
-  return hash % DAILY_CHALLENGES.length;
+  return hash;
+}
+
+function shiftDateKey(dateKey, days) {
+  const date = parseDateKey(dateKey);
+  if (!date) return String(dateKey || "");
+  date.setDate(date.getDate() + days);
+  const year = date.getFullYear();
+  const month = String(date.getMonth() + 1).padStart(2, "0");
+  const day = String(date.getDate()).padStart(2, "0");
+  return `${year}-${month}-${day}`;
 }
 
 function getDailyChallengeProgress(progress, challenge = getDailyChallengeForDate(progress?.date)) {
