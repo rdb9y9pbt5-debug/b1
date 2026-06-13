@@ -85,6 +85,7 @@ const els = {
   familyWealthProgressText: document.querySelector("#familyWealthProgressText"),
   appShell: document.querySelector("#appShell"),
   dashboardScreen: document.querySelector("#dashboardScreen"),
+  coinChallengesScreen: document.querySelector("#coinChallengesScreen"),
   dashboardAvatar: document.querySelector("#dashboardAvatar"),
   dashboardWelcome: document.querySelector("#dashboardWelcome"),
   dashboardWordsLearned: document.querySelector("#dashboardWordsLearned"),
@@ -92,6 +93,12 @@ const els = {
   dashboardArticleNew: document.querySelector("#dashboardArticleNew"),
   dashboardArticleLearned: document.querySelector("#dashboardArticleLearned"),
   dashboardArticleMastered: document.querySelector("#dashboardArticleMastered"),
+  challengeArticleNew: document.querySelector("#challengeArticleNew"),
+  challengeArticleLearned: document.querySelector("#challengeArticleLearned"),
+  challengeArticleMastered: document.querySelector("#challengeArticleMastered"),
+  challengeNounVerbNew: document.querySelector("#challengeNounVerbNew"),
+  challengeNounVerbLearned: document.querySelector("#challengeNounVerbLearned"),
+  challengeNounVerbMastered: document.querySelector("#challengeNounVerbMastered"),
   levelIcon: document.querySelector("#levelIcon"),
   levelName: document.querySelector("#levelName"),
   levelProfileName: document.querySelector("#levelProfileName"),
@@ -659,6 +666,8 @@ function refreshVisibleProfileState() {
   els.currentProfileLabel.textContent = `${profile.emoji} ${profile.name}`;
   if (currentView === "dashboard") {
     renderDashboard();
+  } else if (currentView === "coin-challenges") {
+    renderCoinChallenges();
   } else {
     updateStats();
     renderCard();
@@ -720,6 +729,19 @@ function showDashboard() {
   currentView = "dashboard";
   renderDashboard();
   els.dashboardScreen.classList.remove("hidden");
+  els.coinChallengesScreen.classList.add("hidden");
+  els.controlPanel.classList.add("hidden");
+  els.searchPanel.classList.add("hidden");
+  els.statsGrid.classList.add("hidden");
+  els.studyStage.classList.add("hidden");
+  els.actionBar.classList.add("hidden");
+}
+
+function showCoinChallenges() {
+  currentView = "coin-challenges";
+  renderCoinChallenges();
+  els.dashboardScreen.classList.add("hidden");
+  els.coinChallengesScreen.classList.remove("hidden");
   els.controlPanel.classList.add("hidden");
   els.searchPanel.classList.add("hidden");
   els.statsGrid.classList.add("hidden");
@@ -730,6 +752,7 @@ function showDashboard() {
 function showStudyView(options = {}) {
   currentView = "study";
   els.dashboardScreen.classList.add("hidden");
+  els.coinChallengesScreen.classList.add("hidden");
   els.controlPanel.classList.toggle("hidden", options.hideControls === true);
   els.searchPanel.classList.remove("hidden");
   els.statsGrid.classList.remove("hidden");
@@ -787,6 +810,16 @@ function renderDashboard() {
   renderAvatar(els.dashboardAvatar, profile);
   renderCoinLeaderboard();
   saveProfileStore();
+}
+
+function renderCoinChallenges() {
+  const articleSummary = getArticleSummary();
+  els.challengeArticleNew.textContent = articleSummary.new;
+  els.challengeArticleLearned.textContent = articleSummary.learned;
+  els.challengeArticleMastered.textContent = articleSummary.mastered;
+  els.challengeNounVerbNew.textContent = 0;
+  els.challengeNounVerbLearned.textContent = 0;
+  els.challengeNounVerbMastered.textContent = 0;
 }
 
 function renderCoinLeaderboard() {
@@ -932,12 +965,29 @@ function handleDashboardAction(action) {
   const routes = {
     continue: { mode: "de-en", filter: "all", resume: true },
     articles: { mode: "article", filter: "smartArticle", resume: true },
-    "earn-coins": { mode: "article", filter: "smartArticle", resume: true },
+    "earn-coins": "coin-challenges",
     "unknown-meanings": { mode: "de-en", filter: "unknownMeaning" },
     "unknown-articles": { mode: "article", filter: "newArticles" },
     search: { mode: "de-en", filter: "all", focusSearch: true },
     statistics: { mode: els.modeSelect.value, filter: els.filterSelect.value, openStats: true }
   };
+  const route = routes[action];
+  if (!route) return;
+  if (route === "coin-challenges") {
+    showCoinChallenges();
+    return;
+  }
+  openStudyRoute(route);
+}
+
+function handleChallengeAction(action) {
+  const routes = {
+    articles: { mode: "article", filter: "smartArticle", resume: true }
+  };
+  if (action === "noun-verb") {
+    window.alert("Noun-Verb Quiz is ready for the next build.");
+    return;
+  }
   const route = routes[action];
   if (!route) return;
   openStudyRoute(route);
@@ -1108,6 +1158,12 @@ function bindEvents() {
     const button = event.target.closest("button[data-dashboard-action]");
     if (!button) return;
     handleDashboardAction(button.dataset.dashboardAction);
+  });
+
+  els.coinChallengesScreen.addEventListener("click", (event) => {
+    const button = event.target.closest("button[data-challenge-action]");
+    if (!button) return;
+    handleChallengeAction(button.dataset.challengeAction);
   });
 
   els.modeSelect.addEventListener("change", () => {
@@ -1543,6 +1599,7 @@ function updateStats() {
   els.statWordsLearned.textContent = getWordsLearnedCount();
   els.statWordsTotal.textContent = cards.length;
   if (currentView === "dashboard") renderDashboard();
+  if (currentView === "coin-challenges") renderCoinChallenges();
 }
 
 function renderArticleResult(card) {

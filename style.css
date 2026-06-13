@@ -409,7 +409,8 @@ h1 {
   gap: 10px;
 }
 
-.dashboard-screen {
+.dashboard-screen,
+.coin-challenges-screen {
   grid-row: 2 / 6;
   min-height: 0;
   overflow: auto;
@@ -430,6 +431,70 @@ h1 {
   margin-top: 4px;
   font-size: clamp(1.7rem, 4.6vw, 3rem);
   line-height: 1.05;
+}
+
+.dashboard-heading p {
+  margin: 4px 0 0;
+  color: var(--muted);
+  font-weight: 750;
+}
+
+.challenge-selection-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 12px;
+}
+
+.coin-challenge-card {
+  min-height: 260px;
+  border: 1px solid rgba(222, 216, 203, 0.92);
+  border-radius: 8px;
+  background: rgba(255, 253, 248, 0.9);
+  box-shadow: var(--shadow);
+  padding: clamp(14px, 2.4vw, 20px);
+  display: grid;
+  gap: 12px;
+  align-content: start;
+}
+
+.coin-challenge-card h3 {
+  margin: 0 0 6px;
+  font-size: clamp(1.25rem, 3vw, 1.75rem);
+  line-height: 1.05;
+}
+
+.coin-challenge-card p {
+  margin: 0;
+  color: var(--muted);
+  font-weight: 800;
+}
+
+.challenge-reward {
+  border-radius: 8px;
+  background: var(--amber-soft);
+  padding: 10px 12px;
+  display: grid;
+  gap: 4px;
+}
+
+.challenge-reward span {
+  color: var(--muted);
+  font-size: 0.78rem;
+  font-weight: 850;
+}
+
+.challenge-reward strong {
+  color: var(--ink);
+  font-size: clamp(1.2rem, 3vw, 1.55rem);
+}
+
+.coin-challenge-card button {
+  min-height: 58px;
+  margin-top: auto;
+  background: var(--violet);
+  color: white;
+  font-size: clamp(1rem, 2.4vw, 1.2rem);
+  font-weight: 900;
 }
 
 .level-card,
@@ -1251,8 +1316,19 @@ select,
     padding: 14px;
   }
 
-  .dashboard-screen {
+  .dashboard-screen,
+  .coin-challenges-screen {
     gap: 10px;
+  }
+
+  .challenge-selection-grid {
+    grid-template-columns: 1fr;
+    gap: 10px;
+  }
+
+  .coin-challenge-card {
+    min-height: auto;
+    padding: 14px;
   }
 
   .level-card,

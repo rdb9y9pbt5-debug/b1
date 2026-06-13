@@ -8,7 +8,7 @@
     <meta name="apple-mobile-web-app-title" content="B1 Karten">
     <meta name="apple-mobile-web-app-status-bar-style" content="default">
     <title>Goethe B1 Flashcards</title>
-    <link rel="stylesheet" href="style.css?v=42">
+    <link rel="stylesheet" href="style.css?v=43">
   </head>
   <body>
     <section class="lock-screen" id="lockScreen" aria-label="Password required">
@@ -115,10 +115,9 @@
         <article class="earn-coins-card" aria-label="Earn coins">
           <div>
             <h3>⭐ Earn Coins</h3>
-            <p>Answer article questions correctly.</p>
-            <p>+1 coin per correct answer.</p>
+            <p>Choose a Challenge</p>
           </div>
-          <button class="start-earning-button" type="button" data-dashboard-action="earn-coins">Start Earning</button>
+          <button class="start-earning-button" type="button" data-dashboard-action="earn-coins">Open Challenges</button>
         </article>
 
         <div class="dashboard-motivation" aria-label="Daily motivation">
@@ -164,6 +163,53 @@
           <button type="button" data-dashboard-action="articles">Practice Articles</button>
           <button type="button" data-dashboard-action="search">Search Vocabulary</button>
           <button type="button" data-dashboard-action="statistics">Statistics</button>
+        </div>
+      </section>
+
+      <section class="coin-challenges-screen hidden" id="coinChallengesScreen" aria-label="Coin challenges">
+        <div class="dashboard-heading">
+          <span class="brand-mark" aria-hidden="true">⭐</span>
+          <div>
+            <p class="eyebrow">Earn Coins</p>
+            <h2>Coin Challenges</h2>
+            <p>Choose how you want to earn coins.</p>
+          </div>
+        </div>
+
+        <div class="challenge-selection-grid">
+          <article class="coin-challenge-card">
+            <div>
+              <h3>🏷 Articles</h3>
+              <p>Practice der, die, das</p>
+            </div>
+            <div class="challenge-reward">
+              <span>Reward:</span>
+              <strong>🪙 +1 Coin</strong>
+            </div>
+            <div class="article-state-counts" aria-label="Article challenge progress">
+              <span>New <strong id="challengeArticleNew">0</strong></span>
+              <span>Learned <strong id="challengeArticleLearned">0</strong></span>
+              <span>Mastered <strong id="challengeArticleMastered">0</strong></span>
+            </div>
+            <button type="button" data-challenge-action="articles">Play</button>
+          </article>
+
+          <article class="coin-challenge-card">
+            <div>
+              <h3>🔗 Noun-Verb Pairs</h3>
+              <p>Practice German collocations</p>
+            </div>
+            <div class="challenge-reward">
+              <span>Reward:</span>
+              <strong>🪙🪙 +2 Coins</strong>
+            </div>
+            <div class="article-state-counts" aria-label="Noun-verb challenge progress">
+              <span>New <strong id="challengeNounVerbNew">0</strong></span>
+              <span>Learned <strong id="challengeNounVerbLearned">0</strong></span>
+              <span>Mastered <strong id="challengeNounVerbMastered">0</strong></span>
+            </div>
+            <button type="button" data-challenge-action="noun-verb">Play</button>
+          </article>
         </div>
       </section>
 
@@ -360,6 +406,6 @@
       </footer>
     </main>
 
-    <script type="module" src="script.js?v=42"></script>
+    <script type="module" src="script.js?v=43"></script>
   </body>
 </html>
