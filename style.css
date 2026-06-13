@@ -677,6 +677,13 @@ h1 {
   overflow-wrap: anywhere;
 }
 
+.challenge-heading h3.challenge-complete {
+  color: var(--green);
+  font-size: clamp(0.78rem, 1.4vw, 0.92rem);
+  font-weight: 900;
+  line-height: 1.15;
+}
+
 .challenge-heading strong {
   color: var(--green);
   font-size: clamp(0.78rem, 1.4vw, 0.92rem);

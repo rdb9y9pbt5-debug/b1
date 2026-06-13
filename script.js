@@ -1032,6 +1032,7 @@ function renderDashboard() {
     : "Max family level reached";
   const dailyChallenge = getDailyChallengeForDate(challenge.date);
   const challengeProgress = getDailyChallengeProgress(challenge, dailyChallenge);
+  els.challengeTitle.classList.toggle("challenge-complete", challenge.completed);
   els.challengeTitle.textContent = challenge.completed
     ? "🎉 Daily Challenge Complete!"
     : `${dailyChallenge.icon} ${dailyChallenge.name}`;
