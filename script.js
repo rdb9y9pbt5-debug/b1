@@ -3112,13 +3112,14 @@ function buildMeaningMatchChoices(pair) {
 }
 
 function getMeaningMatchCorrectSentence(pair) {
-  return pair.example?.trim() || `Wir müssen heute ${pair.phrase}.`;
+  return `Wir müssen heute ${getMeaningMatchCleanPhrase(pair)}.`;
 }
 
 function getMeaningMatchWrongVerb(pair) {
+  const sameNounVerbs = getMeaningMatchVerbsForNoun(pair.noun);
   const verbs = Array.from(new Set(nounVerbPairs
     .map((item) => item.verb)
-    .filter((verb) => verb && verb !== pair.verb)));
+    .filter((verb) => verb && verb !== pair.verb && !sameNounVerbs.has(verb.toLowerCase()))));
   return shuffleCards(verbs)[0] || "machen";
 }
 
@@ -3128,6 +3129,36 @@ function buildMeaningMatchWrongSentence(pair, wrongVerb, correctSentence) {
   if (verbPattern.test(correctSentence)) return correctSentence.replace(verbPattern, wrongVerb);
   const wrongPhrase = pair.phrase.replace(verbPattern, wrongVerb);
   return `Wir müssen heute ${wrongPhrase}.`;
+}
+
+function getMeaningMatchCleanPhrase(pair) {
+  return String(pair.phrase || "")
+    .replace(/[.!?]+$/g, "")
+    .trim();
+}
+
+function isMeaningMatchEligiblePair(pair) {
+  if (!pair?.phrase || !pair?.verb || !pair?.english) return false;
+  if (!/^to\s+/i.test(pair.english)) return false;
+  if (!doesPhraseContainVerb(pair.phrase, pair.verb)) return false;
+  if (getMeaningMatchVerbsForNoun(pair.noun).size > 1) return false;
+  if (/[/(]/.test(pair.phrase)) return false;
+  if (/\b(jdm|jdn|etw)\./i.test(pair.phrase)) return false;
+  if (/\b(sich)\b/i.test(pair.phrase)) return false;
+  if (/\b(Dat|Akk|Gen)\.|\+/i.test(pair.phrase)) return false;
+  return getMeaningMatchWrongVerb(pair) !== pair.verb;
+}
+
+function doesPhraseContainVerb(phrase, verb) {
+  return new RegExp(`(^|\\s)${escapeRegExp(verb)}($|\\s|[.!?])`, "i").test(phrase);
+}
+
+function getMeaningMatchVerbsForNoun(noun) {
+  const nounKey = getSortKey(noun || "");
+  return new Set(nounVerbPairs
+    .filter((item) => getSortKey(item.noun || "") === nounKey)
+    .map((item) => item.verb.toLowerCase())
+    .filter(Boolean));
 }
 
 function answerMeaningMatchQuiz(choiceIndex) {
@@ -3298,7 +3329,7 @@ function applyMeaningMatchPriorityOrder(pairList) {
   const learned = [];
   const mastered = [];
 
-  pairList.forEach((pair) => {
+  pairList.filter(isMeaningMatchEligiblePair).forEach((pair) => {
     const status = getMeaningMatchStatus(pair);
     if (isMeaningMatchWrongRecently(pair)) wrongRecent.push(pair);
     else if (status === "new") newPairs.push(pair);
@@ -3452,7 +3483,7 @@ function isMeaningMatchWrongRecently(pair) {
 }
 
 function getMeaningMatchSummary() {
-  return nounVerbPairs.reduce(
+  return nounVerbPairs.filter(isMeaningMatchEligiblePair).reduce(
     (total, pair) => {
       total[getMeaningMatchStatus(pair)] += 1;
       return total;
