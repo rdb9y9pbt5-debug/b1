@@ -498,11 +498,16 @@ h1 {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
   gap: 10px;
+  width: 100%;
+  max-width: 100%;
 }
 
 .dashboard-motivation .challenge-card,
 .dashboard-motivation .streak-card {
   min-height: 96px;
+  width: 100%;
+  max-width: 100%;
+  min-width: 0;
 }
 
 .level-card h3,
@@ -536,6 +541,7 @@ h1 {
   font-size: clamp(1.55rem, 4vw, 2.25rem);
   font-weight: 900;
   line-height: 1;
+  overflow-wrap: anywhere;
 }
 
 .challenge-heading {
@@ -543,15 +549,24 @@ h1 {
   justify-content: space-between;
   gap: 12px;
   align-items: start;
+  min-width: 0;
+}
+
+.challenge-heading h3 {
+  min-width: 0;
+  overflow-wrap: anywhere;
 }
 
 .challenge-heading strong {
   color: var(--green);
   font-size: 0.78rem;
-  white-space: nowrap;
+  white-space: normal;
+  text-align: right;
 }
 
 .progress-track {
+  width: 100%;
+  max-width: 100%;
   height: 12px;
   border-radius: 999px;
   background: rgba(31, 38, 35, 0.12);
@@ -1293,6 +1308,42 @@ select,
   .top-actions {
     flex-wrap: nowrap;
     white-space: nowrap;
+  }
+
+  .dashboard-motivation {
+    grid-template-columns: 1fr;
+    gap: 8px;
+  }
+
+  .dashboard-motivation .challenge-card,
+  .dashboard-motivation .streak-card {
+    min-height: auto;
+    padding: 11px;
+  }
+
+  .challenge-heading {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) auto;
+    gap: 8px;
+    align-items: start;
+  }
+
+  .challenge-heading h3 {
+    font-size: 0.98rem;
+    line-height: 1.1;
+  }
+
+  .challenge-heading strong {
+    font-size: 0.68rem;
+    line-height: 1.15;
+  }
+
+  .challenge-card > p {
+    font-size: clamp(1.35rem, 8vw, 1.9rem);
+  }
+
+  .challenge-card .progress-track {
+    height: 10px;
   }
 }
 
