@@ -25,6 +25,17 @@ const FAMILY_MILESTONES = [
   { coins: 5000, reward: "" },
   { coins: 10000, reward: "" }
 ];
+const FAMILY_WEALTH_LEVELS = [
+  { min: 0, next: 100, icon: "🏚️", name: "Broke Family" },
+  { min: 100, next: 250, icon: "🛒", name: "Corner Shop" },
+  { min: 250, next: 500, icon: "🏠", name: "Family Home" },
+  { min: 500, next: 1000, icon: "🏡", name: "Comfortable Living" },
+  { min: 1000, next: 2000, icon: "🚗", name: "Two-Car Family" },
+  { min: 2000, next: 4000, icon: "🏦", name: "Family Business" },
+  { min: 4000, next: 8000, icon: "🏢", name: "Small Empire" },
+  { min: 8000, next: 15000, icon: "🏰", name: "Language Dynasty" },
+  { min: 15000, next: null, icon: "🌎", name: "Global Conglomerate" }
+];
 const COIN_LEVELS = [
   { min: 0, next: 50, icon: "🪙", name: "Coin Pouch" },
   { min: 50, next: 150, icon: "👛", name: "Wallet" },
@@ -61,6 +72,7 @@ const els = {
   profileScreen: document.querySelector("#profileScreen"),
   profileGrid: document.querySelector("#profileGrid"),
   familyWealthCoins: document.querySelector("#familyWealthCoins"),
+  familyWealthLevel: document.querySelector("#familyWealthLevel"),
   familyGoalCoins: document.querySelector("#familyGoalCoins"),
   familyGoalRemaining: document.querySelector("#familyGoalRemaining"),
   familyWealthProgressFill: document.querySelector("#familyWealthProgressFill"),
@@ -231,6 +243,7 @@ function loadProfileStore() {
   DEFAULT_PROFILES.forEach((profile) => {
     store.profiles[profile.id] = normalizeProfileData(store.profiles[profile.id], profile);
   });
+  store.familyLevelsReached = normalizeFamilyLevelsReached(store.familyLevelsReached, store.profiles);
 
   if (!store.migratedLegacyProgress) {
     const legacyProgress = readStorageObject(STORAGE_KEY);
@@ -259,6 +272,7 @@ function createProfileStore() {
     version: PROFILE_STORE_VERSION,
     currentProfile: "",
     migratedLegacyProgress: false,
+    familyLevelsReached: [],
     profiles: DEFAULT_PROFILES.reduce((profiles, profile) => {
       profiles[profile.id] = normalizeProfileData(null, profile);
       return profiles;
@@ -376,6 +390,14 @@ function normalizeLevelBonuses(savedLevels, coinValue) {
   return COIN_LEVELS
     .filter((level) => level.min > 0 && coins >= level.min)
     .map((level) => getLevelId(level));
+}
+
+function normalizeFamilyLevelsReached(savedLevels, profiles) {
+  if (Array.isArray(savedLevels)) return savedLevels.map(String);
+  const familyCoins = getFamilyCoinTotal(profiles);
+  return FAMILY_WEALTH_LEVELS
+    .filter((level) => level.min > 0 && familyCoins >= level.min)
+    .map((level) => getFamilyLevelId(level));
 }
 
 function readStorageObject(key) {
@@ -578,6 +600,10 @@ function getLevelId(level) {
   return `coins-${level.min}`;
 }
 
+function getFamilyLevelId(level) {
+  return `family-${level.min}`;
+}
+
 function getLevelProgressPercent(coinsValue, level) {
   const coins = normalizeCoinCount(coinsValue);
   if (!level.next) return 100;
@@ -730,23 +756,38 @@ function renderProfileCards() {
 
 function renderFamilyWealth() {
   const summary = getFamilyWealthSummary();
+  els.familyWealthLevel.textContent = `${summary.level.icon} ${summary.level.name}`;
   els.familyWealthCoins.textContent = summary.totalCoins;
-  els.familyGoalCoins.textContent = summary.nextGoal.coins;
+  els.familyGoalCoins.textContent = summary.nextLevel.next ? `${summary.nextLevel.next} Coins` : "Max Family Level";
   els.familyGoalRemaining.textContent = summary.remaining;
   els.familyWealthProgressFill.style.width = `${summary.progressPercent}%`;
-  els.familyWealthProgressText.textContent = `${summary.totalCoins} / ${summary.nextGoal.coins}`;
+  els.familyWealthProgressText.textContent = summary.nextLevel.next
+    ? `${summary.totalCoins} / ${summary.nextLevel.next}`
+    : "Max family level reached";
 }
 
 function getFamilyWealthSummary() {
-  const totalCoins = DEFAULT_PROFILES.reduce((total, profileInfo) => {
-    const profile = profileStore.profiles[profileInfo.id];
-    return total + normalizeCoinCount(profile?.coins);
-  }, 0);
+  const totalCoins = getFamilyCoinTotal(profileStore.profiles);
+  const level = getFamilyWealthLevel(totalCoins);
   const nextGoal = FAMILY_MILESTONES.find((milestone) => totalCoins < milestone.coins)
     || FAMILY_MILESTONES[FAMILY_MILESTONES.length - 1];
-  const remaining = Math.max(nextGoal.coins - totalCoins, 0);
-  const progressPercent = nextGoal.coins ? Math.min((totalCoins / nextGoal.coins) * 100, 100) : 100;
-  return { totalCoins, nextGoal, remaining, progressPercent };
+  const nextLevel = level.next ? level : { ...level, next: null };
+  const nextTarget = nextLevel.next || nextGoal.coins;
+  const remaining = Math.max(nextTarget - totalCoins, 0);
+  const progressPercent = nextTarget ? Math.min((totalCoins / nextTarget) * 100, 100) : 100;
+  return { totalCoins, level, nextGoal, nextLevel, remaining, progressPercent };
+}
+
+function getFamilyCoinTotal(profiles) {
+  return DEFAULT_PROFILES.reduce((total, profileInfo) => {
+    const profile = profiles?.[profileInfo.id];
+    return total + normalizeCoinCount(profile?.coins);
+  }, 0);
+}
+
+function getFamilyWealthLevel(coinsValue) {
+  const coins = normalizeCoinCount(coinsValue);
+  return [...FAMILY_WEALTH_LEVELS].reverse().find((level) => coins >= level.min) || FAMILY_WEALTH_LEVELS[0];
 }
 
 function getProfileDashboardStats(profile) {
@@ -1295,6 +1336,7 @@ function awardCoins(amount) {
   const profile = getCurrentProfile();
   profile.coins = normalizeCoinCount(profile.coins) + normalizeCounter(amount);
   awardLevelBonusIfNeeded(profile);
+  celebrateFamilyLevelIfNeeded();
   saveProfileStore();
 }
 
@@ -1319,6 +1361,28 @@ function showLevelCelebration(profile, level) {
   els.levelCelebrationProfile.textContent = `${profile.name} reached:`;
   els.levelCelebrationLevel.textContent = `${level.icon} ${level.name}`;
   els.levelCelebrationBonus.textContent = `+${LEVEL_UP_BONUS} bonus coins`;
+  els.levelCelebrationBonus.classList.remove("hidden");
+  els.levelCelebration.classList.remove("hidden");
+}
+
+function celebrateFamilyLevelIfNeeded() {
+  profileStore.familyLevelsReached = normalizeFamilyLevelsReached(profileStore.familyLevelsReached, profileStore.profiles);
+  const familyLevel = getFamilyWealthLevel(getFamilyCoinTotal(profileStore.profiles));
+  if (familyLevel.min === 0) return;
+
+  const levelId = getFamilyLevelId(familyLevel);
+  if (profileStore.familyLevelsReached.includes(levelId)) return;
+
+  profileStore.familyLevelsReached.push(levelId);
+  showFamilyLevelCelebration(familyLevel);
+}
+
+function showFamilyLevelCelebration(level) {
+  els.levelCelebrationTitle.textContent = "🎉 Family Wealth Level Up!";
+  els.levelCelebrationProfile.textContent = "The Zaghrout Family reached:";
+  els.levelCelebrationLevel.textContent = `${level.icon} ${level.name}`;
+  els.levelCelebrationBonus.textContent = "";
+  els.levelCelebrationBonus.classList.add("hidden");
   els.levelCelebration.classList.remove("hidden");
 }
 

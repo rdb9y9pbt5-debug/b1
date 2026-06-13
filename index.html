@@ -8,7 +8,7 @@
     <meta name="apple-mobile-web-app-title" content="B1 Karten">
     <meta name="apple-mobile-web-app-status-bar-style" content="default">
     <title>Goethe B1 Flashcards</title>
-    <link rel="stylesheet" href="style.css?v=33">
+    <link rel="stylesheet" href="style.css?v=34">
   </head>
   <body>
     <section class="lock-screen" id="lockScreen" aria-label="Password required">
@@ -34,13 +34,14 @@
           </div>
         </div>
         <section class="family-wealth-card" aria-label="Family wealth">
+          <h2 id="familyWealthLevel">🏚️ Broke Family</h2>
           <div class="family-wealth-main">
             <p class="eyebrow">🏦 Family Wealth</p>
             <strong><span id="familyWealthCoins">0</span> Coins</strong>
           </div>
           <div class="family-goal">
-            <span>Next Family Goal</span>
-            <strong><span id="familyGoalCoins">500</span> Coins</strong>
+            <span>Next Wealth Level</span>
+            <strong id="familyGoalCoins">500 Coins</strong>
             <span><span id="familyGoalRemaining">500</span> Coins Remaining</span>
           </div>
           <div class="progress-track" aria-hidden="true">
@@ -341,6 +342,6 @@
       </footer>
     </main>
 
-    <script src="script.js?v=33"></script>
+    <script src="script.js?v=34"></script>
   </body>
 </html>

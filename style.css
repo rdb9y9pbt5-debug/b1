@@ -120,6 +120,13 @@ body {
   gap: 14px;
 }
 
+.family-wealth-card h2 {
+  margin: 0;
+  color: var(--ink);
+  font-size: clamp(1.55rem, 4.6vw, 2.6rem);
+  line-height: 1.05;
+}
+
 .family-wealth-main {
   display: grid;
   gap: 4px;
