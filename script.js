@@ -506,15 +506,31 @@ function createProfileStore() {
 
 function promoteFamilyAchievements(store) {
   if (!store?.profiles) return store;
+  const familyIds = new Set(getFamilyAchievementIds(store));
+  store.familyAchievementsUnlocked = Array.from(familyIds);
+  return store;
+}
+
+function getFamilyAchievementIds(store = profileStore) {
+  if (!store) return [];
   const familyIds = new Set(normalizeAchievementList(store.familyAchievementsUnlocked));
-  const familyAchievementIds = new Set(ACHIEVEMENTS.filter((achievement) => achievement.scope === "family").map((achievement) => achievement.id));
+  const familyAchievementIds = new Set(ACHIEVEMENTS
+    .filter((achievement) => achievement.scope === "family")
+    .map((achievement) => achievement.id));
   Object.values(store.profiles).forEach((profile) => {
     normalizeAchievementList(profile?.achievementsUnlocked).forEach((achievementId) => {
       if (familyAchievementIds.has(achievementId)) familyIds.add(achievementId);
     });
   });
-  store.familyAchievementsUnlocked = Array.from(familyIds);
-  return store;
+  return Array.from(familyIds);
+}
+
+function getPersonalAchievementIds(profile) {
+  const personalAchievementIds = new Set(ACHIEVEMENTS
+    .filter((achievement) => achievement.scope !== "family")
+    .map((achievement) => achievement.id));
+  return normalizeAchievementList(profile?.achievementsUnlocked)
+    .filter((achievementId) => personalAchievementIds.has(achievementId));
 }
 
 function normalizeProfileData(data, profile) {
@@ -699,6 +715,7 @@ function readStorageObject(key) {
 }
 
 function saveProfileStore() {
+  promoteFamilyAchievements(profileStore);
   localStorage.setItem(PROFILE_STORAGE_KEY, JSON.stringify(profileStore));
   scheduleCloudSave();
 }
@@ -713,6 +730,7 @@ function scheduleCloudSave() {
 
 async function saveProfileStoreToCloudNow() {
   if (!profileStore) return;
+  promoteFamilyAchievements(profileStore);
   try {
     const response = await fetch(`${getSupabaseRowUrl()}?on_conflict=id`, {
       method: "POST",
@@ -1129,9 +1147,10 @@ function renderCoinLeaderboard() {
 
 function renderAchievements() {
   if (!els.achievementsGrid || !profileStore || !currentProfileId) return;
+  promoteFamilyAchievements(profileStore);
   const profile = getCurrentProfile();
-  const profileUnlocked = new Set(normalizeAchievementList(profile.achievementsUnlocked));
-  const familyUnlocked = new Set(normalizeAchievementList(profileStore.familyAchievementsUnlocked));
+  const profileUnlocked = new Set(getPersonalAchievementIds(profile));
+  const familyUnlocked = new Set(getFamilyAchievementIds(profileStore));
 
   els.achievementsGrid.replaceChildren(
     ...ACHIEVEMENTS.map((achievement) => {
@@ -1166,11 +1185,12 @@ function createAchievementBody(achievement, unlocked) {
 
 function renderAchievementDebugPanel() {
   if (!els.debugCurrentProfile || !profileStore) return;
+  promoteFamilyAchievements(profileStore);
   const profile = currentProfileId ? getCurrentProfile() : null;
   const personalAchievements = profile
-    ? normalizeAchievementList(profile.achievementsUnlocked)
+    ? getPersonalAchievementIds(profile)
     : [];
-  const familyAchievements = normalizeAchievementList(profileStore.familyAchievementsUnlocked);
+  const familyAchievements = getFamilyAchievementIds(profileStore);
 
   els.debugCurrentProfile.textContent = profile?.name || "None";
   els.debugPersonalAchievements.textContent = formatDebugAchievementList(personalAchievements);
@@ -2203,11 +2223,12 @@ function checkAchievements(reason = "") {
   try {
     const profile = getCurrentProfile();
     profile.achievementsUnlocked = normalizeAchievementList(profile.achievementsUnlocked);
-    profileStore.familyAchievementsUnlocked = normalizeAchievementList(profileStore.familyAchievementsUnlocked);
+    promoteFamilyAchievements(profileStore);
+    const familyAchievementIds = getFamilyAchievementIds(profileStore);
 
     ACHIEVEMENTS.forEach((achievement) => {
       const isUnlocked = achievement.scope === "family"
-        ? profileStore.familyAchievementsUnlocked.includes(achievement.id)
+        ? familyAchievementIds.includes(achievement.id)
         : profile.achievementsUnlocked.includes(achievement.id);
       if (isUnlocked || !isAchievementConditionMet(achievement, profile)) return;
       unlockAchievement(achievement, profile, reason);
@@ -2298,6 +2319,13 @@ async function testFamilyAchievement() {
   if (!profileStore.familyAchievementsUnlocked.includes(achievement.id)) {
     profileStore.familyAchievementsUnlocked.push(achievement.id);
   }
+  Object.values(profileStore.profiles || {}).forEach((profile) => {
+    profile.achievementsUnlocked = normalizeAchievementList(profile.achievementsUnlocked);
+    if (!profile.achievementsUnlocked.includes(achievement.id)) {
+      profile.achievementsUnlocked.push(achievement.id);
+    }
+  });
+  promoteFamilyAchievements(profileStore);
   showAchievementCelebration(achievement);
   saveProfileStore();
   await saveProfileStoreToCloudNow();
