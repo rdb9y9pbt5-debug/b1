@@ -8,7 +8,7 @@
     <meta name="apple-mobile-web-app-title" content="B1 Karten">
     <meta name="apple-mobile-web-app-status-bar-style" content="default">
     <title>Goethe B1 Flashcards</title>
-    <link rel="stylesheet" href="style.css?v=43">
+    <link rel="stylesheet" href="style.css?v=44">
   </head>
   <body>
     <section class="lock-screen" id="lockScreen" aria-label="Password required">
@@ -154,6 +154,14 @@
               <span>New <strong id="dashboardArticleNew">0</strong></span>
               <span>Learned <strong id="dashboardArticleLearned">0</strong></span>
               <span>Mastered <strong id="dashboardArticleMastered">0</strong></span>
+            </div>
+          </article>
+          <article class="dashboard-card noun-verb">
+            <span>🔗 Noun-Verb</span>
+            <div class="article-state-counts" aria-label="Noun-verb learning progress">
+              <span>New <strong id="dashboardNounVerbNew">0</strong></span>
+              <span>Learned <strong id="dashboardNounVerbLearned">0</strong></span>
+              <span>Mastered <strong id="dashboardNounVerbMastered">0</strong></span>
             </div>
           </article>
         </div>
@@ -392,6 +400,31 @@
         </article>
       </section>
 
+      <section class="noun-verb-stage hidden" id="nounVerbStage" aria-live="polite">
+        <article class="noun-verb-card">
+          <div class="card-meta">
+            <span id="nounVerbCounter">0 / 0</span>
+            <span>Noun-Verb Pairs</span>
+          </div>
+
+          <div class="question-area">
+            <p class="eyebrow">Complete the phrase</p>
+            <h2 id="nounVerbPrompt">Loading</h2>
+          </div>
+
+          <div class="noun-verb-options" id="nounVerbOptions"></div>
+
+          <div class="noun-verb-result hidden" id="nounVerbResult"></div>
+
+          <div class="empty-state hidden" id="nounVerbEmptyState">
+            <h2>No noun-verb pairs available</h2>
+            <p>Make sure nomen_verb_verbindungen.csv is uploaded.</p>
+          </div>
+
+          <button class="noun-verb-next hidden" type="button" id="nounVerbNext">Next</button>
+        </article>
+      </section>
+
       <footer class="action-bar hidden" id="actionBar">
         <div class="nav-buttons">
           <button class="ghost-button" id="previousCard" type="button">Previous</button>
@@ -406,6 +439,6 @@
       </footer>
     </main>
 
-    <script type="module" src="script.js?v=43"></script>
+    <script type="module" src="script.js?v=44"></script>
   </body>
 </html>
