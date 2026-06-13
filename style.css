@@ -436,6 +436,33 @@ h1 {
   background: var(--violet-soft);
 }
 
+.achievement-debug-panel {
+  border-top: 1px solid var(--line);
+  margin-top: 4px;
+  padding: 10px;
+  display: grid;
+  gap: 7px;
+  color: var(--muted);
+  font-size: 0.76rem;
+  line-height: 1.25;
+  white-space: normal;
+}
+
+.achievement-debug-panel strong {
+  color: var(--ink);
+  font-size: 0.84rem;
+}
+
+.achievement-debug-panel p {
+  margin: 0;
+  font-weight: 750;
+}
+
+.achievement-debug-panel span {
+  color: var(--violet);
+  overflow-wrap: anywhere;
+}
+
 .control-panel {
   display: grid;
   grid-template-columns: 1fr 1fr minmax(92px, 0.45fr) minmax(140px, 0.65fr);

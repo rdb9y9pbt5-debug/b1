@@ -67,6 +67,24 @@ const ACHIEVEMENTS = [
     description: "Answer 20 Noun-Verb questions correctly.",
     reward: 20,
     scope: "profile"
+  },
+  {
+    id: "test-personal-achievement",
+    icon: "🏆",
+    name: "Test Personal Achievement",
+    description: "Temporary test badge for the current profile only.",
+    reward: 1,
+    scope: "profile",
+    testOnly: true
+  },
+  {
+    id: "test-family-achievement",
+    icon: "🏡",
+    name: "Test Family Achievement",
+    description: "Temporary test badge shared by the whole family.",
+    reward: 0,
+    scope: "family",
+    testOnly: true
   }
 ];
 const DAILY_CHALLENGES = [
@@ -261,6 +279,12 @@ const els = {
   resetProgress: document.querySelector("#resetProgress"),
   restartVocabularyPosition: document.querySelector("#restartVocabularyPosition"),
   restartArticlePosition: document.querySelector("#restartArticlePosition"),
+  testPersonalAchievement: document.querySelector("#testPersonalAchievement"),
+  testFamilyAchievement: document.querySelector("#testFamilyAchievement"),
+  debugCurrentProfile: document.querySelector("#debugCurrentProfile"),
+  debugPersonalAchievements: document.querySelector("#debugPersonalAchievements"),
+  debugFamilyAchievements: document.querySelector("#debugFamilyAchievements"),
+  debugAchievementSource: document.querySelector("#debugAchievementSource"),
   statWordsLearned: document.querySelector("#statWordsLearned"),
   statWordsTotal: document.querySelector("#statWordsTotal"),
   statArticlesLearned: document.querySelector("#statArticlesLearned"),
@@ -1124,6 +1148,37 @@ function createAchievementBody(achievement, unlocked) {
   return body;
 }
 
+function renderAchievementDebugPanel() {
+  if (!els.debugCurrentProfile || !profileStore) return;
+  const profile = currentProfileId ? getCurrentProfile() : null;
+  const personalAchievements = profile
+    ? normalizeAchievementList(profile.achievementsUnlocked)
+    : [];
+  const familyAchievements = normalizeAchievementList(profileStore.familyAchievementsUnlocked);
+
+  els.debugCurrentProfile.textContent = profile?.name || "None";
+  els.debugPersonalAchievements.textContent = formatDebugAchievementList(personalAchievements);
+  els.debugFamilyAchievements.textContent = formatDebugAchievementList(familyAchievements);
+  els.debugAchievementSource.textContent = hasCloudSyncConfig()
+    ? "Firebase/Supabase + Local Storage"
+    : "Local Storage";
+}
+
+function formatDebugAchievementList(achievementIds) {
+  if (!achievementIds.length) return "None";
+  return achievementIds
+    .map((id) => getAchievementById(id)?.name || id)
+    .join(", ");
+}
+
+function hasCloudSyncConfig() {
+  return Boolean(SUPABASE_URL && SUPABASE_ANON_KEY && SUPABASE_SYNC_TABLE);
+}
+
+function getAchievementById(achievementId) {
+  return ACHIEVEMENTS.find((achievement) => achievement.id === achievementId) || null;
+}
+
 function createTextElement(tagName, className, text) {
   const element = document.createElement(tagName);
   if (className) element.className = className;
@@ -1566,6 +1621,8 @@ function bindEvents() {
     const isOpen = !els.settingsPanel.classList.contains("hidden");
     els.settingsPanel.classList.toggle("hidden", isOpen);
     els.settingsToggle.setAttribute("aria-expanded", String(!isOpen));
+    if (isOpen) return;
+    renderAchievementDebugPanel();
   });
 
   document.addEventListener("click", (event) => {
@@ -1604,6 +1661,14 @@ function bindEvents() {
   els.restartArticlePosition.addEventListener("click", () => {
     closeSettingsMenu();
     confirmAndResetSavedPosition("article");
+  });
+
+  els.testPersonalAchievement.addEventListener("click", () => {
+    testPersonalAchievement();
+  });
+
+  els.testFamilyAchievement.addEventListener("click", () => {
+    testFamilyAchievement();
   });
 
   if (els.csvInput) {
@@ -2179,13 +2244,47 @@ function showAchievementCelebration(achievement) {
   els.levelCelebrationProfile.textContent = achievement.scope === "family" ? "Family achievement:" : "Achievement:";
   els.levelCelebrationLevel.textContent = `${achievement.icon} ${achievement.name}`;
   if (achievement.reward > 0) {
-    els.levelCelebrationBonus.textContent = `+${achievement.reward} Bonus Coins`;
+    els.levelCelebrationBonus.textContent = `+${achievement.reward} Bonus ${achievement.reward === 1 ? "Coin" : "Coins"}`;
     els.levelCelebrationBonus.classList.remove("hidden");
   } else {
     els.levelCelebrationBonus.textContent = "Celebration only";
     els.levelCelebrationBonus.classList.remove("hidden");
   }
   els.levelCelebration.classList.remove("hidden");
+}
+
+function testPersonalAchievement() {
+  if (!currentProfileId) return;
+  const achievement = getAchievementById("test-personal-achievement");
+  const profile = getCurrentProfile();
+  if (!achievement || !profile) return;
+  profile.achievementsUnlocked = normalizeAchievementList(profile.achievementsUnlocked);
+  if (!profile.achievementsUnlocked.includes(achievement.id)) {
+    profile.achievementsUnlocked.push(achievement.id);
+    profile.coins = normalizeCoinCount(profile.coins) + achievement.reward;
+    showAchievementCelebration(achievement);
+  } else {
+    showAchievementCelebration(achievement);
+  }
+  awardLevelBonusIfNeeded(profile);
+  celebrateFamilyLevelIfNeeded();
+  saveProfileStore();
+  renderAchievements();
+  renderCoinLeaderboard();
+  renderAchievementDebugPanel();
+}
+
+function testFamilyAchievement() {
+  const achievement = getAchievementById("test-family-achievement");
+  if (!achievement || !profileStore) return;
+  profileStore.familyAchievementsUnlocked = normalizeAchievementList(profileStore.familyAchievementsUnlocked);
+  if (!profileStore.familyAchievementsUnlocked.includes(achievement.id)) {
+    profileStore.familyAchievementsUnlocked.push(achievement.id);
+  }
+  showAchievementCelebration(achievement);
+  saveProfileStore();
+  renderAchievements();
+  renderAchievementDebugPanel();
 }
 
 function recordDailyActivity(type, details = {}) {
