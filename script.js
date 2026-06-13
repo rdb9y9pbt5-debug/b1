@@ -200,6 +200,7 @@ let selectedQuizArticle = "";
 let nounVerbAnswered = false;
 let selectedNounVerbVerb = "";
 let nounVerbChoices = [];
+let recentNounVerbQuestionIds = [];
 let progress = {};
 let articleProgress = {};
 let nounVerbProgress = {};
@@ -744,6 +745,7 @@ function showProfileScreen() {
   articleProgress = {};
   nounVerbProgress = {};
   els.appShell.classList.remove("clean-article-practice");
+  els.appShell.classList.remove("clean-quiz-mode");
   els.appShell.classList.add("locked");
   els.profileScreen.classList.remove("hidden");
   renderProfileCards();
@@ -795,6 +797,7 @@ function saveSettings() {
 function showDashboard() {
   currentView = "dashboard";
   els.appShell.classList.remove("clean-article-practice");
+  els.appShell.classList.remove("clean-quiz-mode");
   renderDashboard();
   els.dashboardScreen.classList.remove("hidden");
   els.coinChallengesScreen.classList.add("hidden");
@@ -809,6 +812,7 @@ function showDashboard() {
 function showCoinChallenges() {
   currentView = "coin-challenges";
   els.appShell.classList.remove("clean-article-practice");
+  els.appShell.classList.remove("clean-quiz-mode");
   renderCoinChallenges();
   els.dashboardScreen.classList.add("hidden");
   els.coinChallengesScreen.classList.remove("hidden");
@@ -827,6 +831,7 @@ function showStudyView(options = {}) {
   els.coinChallengesScreen.classList.add("hidden");
   els.nounVerbStage.classList.add("hidden");
   els.appShell.classList.toggle("clean-article-practice", cleanArticlePractice);
+  els.appShell.classList.toggle("clean-quiz-mode", cleanArticlePractice);
   els.controlPanel.classList.toggle("hidden", options.hideControls === true || cleanArticlePractice);
   els.searchPanel.classList.toggle("hidden", cleanArticlePractice);
   els.statsGrid.classList.toggle("hidden", cleanArticlePractice);
@@ -845,13 +850,14 @@ function showStudyView(options = {}) {
 function showNounVerbQuiz() {
   currentView = "noun-verb";
   els.appShell.classList.remove("clean-article-practice");
+  els.appShell.classList.add("clean-quiz-mode");
   els.dashboardScreen.classList.add("hidden");
   els.coinChallengesScreen.classList.add("hidden");
   els.controlPanel.classList.add("hidden");
   els.searchPanel.classList.add("hidden");
   els.statsGrid.classList.add("hidden");
   els.studyStage.classList.add("hidden");
-  els.actionBar.classList.add("hidden");
+  els.actionBar.classList.remove("hidden");
   els.nounVerbStage.classList.remove("hidden");
   applyNounVerbSmartOrder();
   resumeNounVerbPosition();
@@ -1319,8 +1325,20 @@ function bindEvents() {
 
   els.showAnswer.addEventListener("click", revealAnswer);
 
-  els.previousCard.addEventListener("click", () => moveCard(-1));
-  els.nextCard.addEventListener("click", () => moveCard(1));
+  els.previousCard.addEventListener("click", () => {
+    if (currentView === "noun-verb") {
+      moveNounVerbCard(-1);
+      return;
+    }
+    moveCard(-1);
+  });
+  els.nextCard.addEventListener("click", () => {
+    if (currentView === "noun-verb") {
+      moveNounVerbCard(1);
+      return;
+    }
+    moveCard(1);
+  });
 
   els.homeButton.addEventListener("click", () => {
     saveCurrentPosition();
@@ -1352,7 +1370,7 @@ function bindEvents() {
     answerNounVerbQuiz(button.dataset.verb);
   });
 
-  els.nounVerbNext.addEventListener("click", moveNounVerbNext);
+  els.nounVerbNext.addEventListener("click", () => moveNounVerbCard(1));
 
   els.switchProfile.addEventListener("click", () => {
     saveCurrentPosition();
@@ -2049,6 +2067,11 @@ function getWordsLearnedCount() {
 function renderNounVerbQuiz() {
   const pair = visibleNounVerbPairs[nounVerbCurrentIndex];
   const hasPair = Boolean(pair);
+  els.nounVerbStage.classList.toggle("noun-verb-result-visible", nounVerbAnswered);
+  els.showAnswer.classList.add("hidden");
+  els.ratingButtons.classList.add("hidden");
+  els.previousCard.disabled = visibleNounVerbPairs.length < 2;
+  els.nextCard.disabled = visibleNounVerbPairs.length < 2;
   els.nounVerbEmptyState.classList.toggle("hidden", hasPair);
   els.nounVerbPrompt.classList.toggle("hidden", !hasPair);
   els.nounVerbOptions.classList.toggle("hidden", !hasPair);
@@ -2062,6 +2085,7 @@ function renderNounVerbQuiz() {
     els.nounVerbOptions.replaceChildren();
     return;
   }
+  if (!nounVerbAnswered) rememberNounVerbQuestion(pair.id);
 
   if (!nounVerbChoices.length || !nounVerbChoices.includes(pair.verb)) {
     nounVerbChoices = buildNounVerbChoices(pair);
@@ -2110,6 +2134,7 @@ function answerNounVerbQuiz(verb) {
   recordStudyHistory("noun-verb", pair, isCorrect ? "correct" : "wrong");
   saveNounVerbProgress();
   saveNounVerbPosition();
+  rememberNounVerbQuestion(pair.id);
   renderNounVerbQuiz();
   renderCoinChallenges();
   if (currentView === "dashboard") renderDashboard();
@@ -2133,12 +2158,14 @@ function renderNounVerbResult(pair) {
     button.classList.toggle("correct", verb === pair.verb);
     button.classList.toggle("incorrect", verb === selectedNounVerbVerb && verb !== pair.verb);
   });
-  els.nounVerbNext.classList.remove("hidden");
+  els.nounVerbNext.classList.add("hidden");
 }
 
-function moveNounVerbNext() {
+function moveNounVerbCard(direction) {
   if (!visibleNounVerbPairs.length) return;
-  nounVerbCurrentIndex = (nounVerbCurrentIndex + 1) % visibleNounVerbPairs.length;
+  nounVerbCurrentIndex = direction > 0
+    ? getNextNounVerbIndex()
+    : (nounVerbCurrentIndex - 1 + visibleNounVerbPairs.length) % visibleNounVerbPairs.length;
   nounVerbAnswered = false;
   selectedNounVerbVerb = "";
   nounVerbChoices = [];
@@ -2152,6 +2179,39 @@ function applyNounVerbSmartOrder() {
   nounVerbAnswered = false;
   selectedNounVerbVerb = "";
   nounVerbChoices = [];
+}
+
+function getNextNounVerbIndex() {
+  if (visibleNounVerbPairs.length < 2) return nounVerbCurrentIndex;
+  const recentIds = new Set(recentNounVerbQuestionIds);
+  const currentId = visibleNounVerbPairs[nounVerbCurrentIndex]?.id;
+  let candidateIndex = -1;
+
+  for (let offset = 1; offset < visibleNounVerbPairs.length; offset += 1) {
+    const index = (nounVerbCurrentIndex + offset) % visibleNounVerbPairs.length;
+    const pair = visibleNounVerbPairs[index];
+    if (pair.id !== currentId && !recentIds.has(pair.id)) {
+      candidateIndex = index;
+      break;
+    }
+  }
+
+  if (candidateIndex >= 0) return candidateIndex;
+
+  for (let offset = 1; offset < visibleNounVerbPairs.length; offset += 1) {
+    const index = (nounVerbCurrentIndex + offset) % visibleNounVerbPairs.length;
+    if (visibleNounVerbPairs[index].id !== currentId) return index;
+  }
+
+  return nounVerbCurrentIndex;
+}
+
+function rememberNounVerbQuestion(pairId) {
+  if (!pairId) return;
+  recentNounVerbQuestionIds = [
+    pairId,
+    ...recentNounVerbQuestionIds.filter((id) => id !== pairId)
+  ].slice(0, 5);
 }
 
 function applyNounVerbPriorityOrder(pairList) {

@@ -1041,53 +1041,61 @@ select,
   display: grid;
 }
 
-.clean-article-practice .study-stage {
+.clean-quiz-mode .study-stage,
+.clean-quiz-mode .noun-verb-stage {
   grid-row: 2 / 6;
   min-height: 0;
   align-items: stretch;
 }
 
-.clean-article-practice .flashcard {
+.clean-quiz-mode .flashcard,
+.clean-quiz-mode .noun-verb-card {
   min-height: 0;
   padding: clamp(24px, 4vw, 46px);
   grid-template-rows: auto minmax(150px, 1fr) auto auto;
   place-self: stretch;
 }
 
-.clean-article-practice .card-meta {
+.clean-quiz-mode .card-meta {
   justify-content: center;
 }
 
-.clean-article-practice #cardCounter {
+.clean-article-practice #cardCounter,
+.clean-quiz-mode #nounVerbCounter {
   display: none;
 }
 
-.clean-article-practice #cardMode {
+.clean-article-practice #cardMode,
+.clean-quiz-mode .noun-verb-card .card-meta span:last-child {
   color: var(--violet);
   font-size: clamp(1.05rem, 2.4vw, 1.45rem);
 }
 
-.clean-article-practice .question-area {
+.clean-quiz-mode .question-area {
   align-self: center;
   gap: 14px;
 }
 
-.clean-article-practice #promptLabel {
+.clean-article-practice #promptLabel,
+.clean-quiz-mode .noun-verb-card .eyebrow {
   color: var(--blue);
   font-size: clamp(1rem, 2.4vw, 1.3rem);
 }
 
-.clean-article-practice #questionText {
+.clean-article-practice #questionText,
+.clean-quiz-mode #nounVerbPrompt {
   font-size: clamp(4rem, 10vw, 7.2rem);
 }
 
-.clean-article-practice .article-guess {
+.clean-article-practice .article-guess,
+.clean-quiz-mode .noun-verb-options {
   max-width: 720px;
   width: 100%;
   justify-self: center;
 }
 
-.clean-article-practice .article-guess button {
+.clean-article-practice .article-guess button,
+.clean-quiz-mode .noun-verb-options button {
   min-height: 76px;
   font-size: clamp(1.35rem, 3vw, 1.8rem);
 }
@@ -1569,7 +1577,7 @@ select,
     grid-template-rows: auto auto auto auto auto auto;
   }
 
-  .app-shell.clean-article-practice {
+  .app-shell.clean-quiz-mode {
     height: 100dvh;
     min-height: 0;
     overflow: hidden;
@@ -1582,7 +1590,8 @@ select,
     overflow: visible;
   }
 
-  .clean-article-practice .study-stage {
+  .clean-quiz-mode .study-stage,
+  .clean-quiz-mode .noun-verb-stage {
     grid-row: auto;
     min-height: 0;
     overflow: hidden;
@@ -1596,7 +1605,8 @@ select,
     grid-template-rows: auto auto auto auto;
   }
 
-  .clean-article-practice .flashcard {
+  .clean-quiz-mode .flashcard,
+  .clean-quiz-mode .noun-verb-card {
     height: 100%;
     min-height: 0;
     overflow: hidden;
@@ -1605,13 +1615,14 @@ select,
     grid-template-rows: auto minmax(0, 1fr) auto;
   }
 
-  .clean-article-practice .flashcard.quiz-result-visible {
+  .clean-article-practice .flashcard.quiz-result-visible,
+  .clean-quiz-mode .noun-verb-stage.noun-verb-result-visible .noun-verb-card {
     overflow-y: auto;
     grid-template-rows: auto auto auto;
     -webkit-overflow-scrolling: touch;
   }
 
-  .clean-article-practice .question-area {
+  .clean-quiz-mode .question-area {
     align-self: center;
     gap: 8px;
   }
@@ -1620,31 +1631,35 @@ select,
     font-size: 1rem;
   }
 
-  .clean-article-practice #promptLabel {
+  .clean-article-practice #promptLabel,
+  .clean-quiz-mode .noun-verb-card .eyebrow {
     font-size: 0.82rem;
   }
 
-  .clean-article-practice #questionText {
+  .clean-article-practice #questionText,
+  .clean-quiz-mode #nounVerbPrompt {
     font-size: clamp(3.2rem, 17vw, 5.1rem);
     line-height: 0.98;
   }
 
-  .clean-article-practice .article-guess {
+  .clean-article-practice .article-guess,
+  .clean-quiz-mode .noun-verb-options {
     gap: 8px;
   }
 
-  .clean-article-practice .article-guess button {
+  .clean-article-practice .article-guess button,
+  .clean-quiz-mode .noun-verb-options button {
     min-height: 58px;
     font-size: 1.15rem;
   }
 
-  .clean-article-practice .action-bar {
+  .clean-quiz-mode .action-bar {
     display: grid;
     grid-template-columns: 1fr;
     gap: 0;
   }
 
-  .clean-article-practice .nav-buttons button {
+  .clean-quiz-mode .nav-buttons button {
     min-height: 48px;
   }
 
