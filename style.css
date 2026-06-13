@@ -573,6 +573,10 @@ h1 {
   column-gap: clamp(16px, 3vw, 34px);
 }
 
+.earn-coins-card .start-earning-button {
+  order: -1;
+}
+
 .challenge-card {
   background: linear-gradient(135deg, var(--green-soft), rgba(255, 253, 248, 0.94));
 }
@@ -1458,6 +1462,10 @@ select,
 
   .earn-coins-card {
     grid-template-columns: 1fr;
+  }
+
+  .earn-coins-card .start-earning-button {
+    order: 0;
   }
 
   .dashboard-motivation {
