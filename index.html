@@ -8,7 +8,7 @@
     <meta name="apple-mobile-web-app-title" content="SprachQuest">
     <meta name="apple-mobile-web-app-status-bar-style" content="default">
     <title>SprachQuest</title>
-    <link rel="stylesheet" href="style.css?v=65">
+    <link rel="stylesheet" href="style.css?v=66">
   </head>
   <body>
     <section class="lock-screen" id="lockScreen" aria-label="Password required">
@@ -161,7 +161,11 @@
         <div class="dashboard-progress" aria-label="Dashboard progress">
           <article class="dashboard-card learned">
             <span>📚 Words</span>
-            <strong><span id="dashboardWordsLearned">0</span> <small>/ <span id="dashboardWordsTotal">0</span></small></strong>
+            <div class="article-state-counts" aria-label="Word learning progress">
+              <span>New <strong id="dashboardWordNew">0</strong></span>
+              <span>Learned <strong id="dashboardWordLearned">0</strong></span>
+              <span>Mastered <strong id="dashboardWordMastered">0</strong></span>
+            </div>
           </article>
           <article class="dashboard-card articles">
             <span>🏷 Articles</span>
@@ -500,6 +504,6 @@
       </footer>
     </main>
 
-    <script type="module" src="script.js?v=65"></script>
+    <script type="module" src="script.js?v=66"></script>
   </body>
 </html>

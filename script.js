@@ -314,8 +314,9 @@ const els = {
   coinChallengesScreen: document.querySelector("#coinChallengesScreen"),
   dashboardAvatar: document.querySelector("#dashboardAvatar"),
   dashboardWelcome: document.querySelector("#dashboardWelcome"),
-  dashboardWordsLearned: document.querySelector("#dashboardWordsLearned"),
-  dashboardWordsTotal: document.querySelector("#dashboardWordsTotal"),
+  dashboardWordNew: document.querySelector("#dashboardWordNew"),
+  dashboardWordLearned: document.querySelector("#dashboardWordLearned"),
+  dashboardWordMastered: document.querySelector("#dashboardWordMastered"),
   dashboardArticleNew: document.querySelector("#dashboardArticleNew"),
   dashboardArticleLearned: document.querySelector("#dashboardArticleLearned"),
   dashboardArticleMastered: document.querySelector("#dashboardArticleMastered"),
@@ -1230,6 +1231,7 @@ function renderDashboard() {
   const profile = getCurrentProfile();
   prepareProfileDailyState(profile);
   checkAchievements("dashboard");
+  const wordSummary = getWordLearningSummary();
   const articleSummary = getArticleSummary();
   const nounVerbSummary = getNounVerbSummary();
   const level = getCoinLevel(profile.coins);
@@ -1239,8 +1241,9 @@ function renderDashboard() {
   const streak = getDisplayStreak(profile);
   profile.positions = normalizePositions(profile.positions);
   els.dashboardWelcome.textContent = `Welcome back, ${profile.name}`;
-  els.dashboardWordsLearned.textContent = getWordsLearnedCount();
-  els.dashboardWordsTotal.textContent = cards.length;
+  els.dashboardWordNew.textContent = wordSummary.new;
+  els.dashboardWordLearned.textContent = wordSummary.learned;
+  els.dashboardWordMastered.textContent = wordSummary.mastered;
   els.dashboardArticleNew.textContent = articleSummary.new;
   els.dashboardArticleLearned.textContent = articleSummary.learned;
   els.dashboardArticleMastered.textContent = articleSummary.mastered;
@@ -2797,6 +2800,23 @@ function getArticleSummary() {
       return total;
     },
     { new: 0, learned: 0, mastered: 0, wrongRecently: 0, gap: 0, nouns: 0 }
+  );
+}
+
+function getWordLearningSummary() {
+  return cards.reduce(
+    (total, card) => {
+      const status = getMeaningStatus(card);
+      if (status === "known") {
+        total.mastered += 1;
+      } else if (status === "unsure") {
+        total.learned += 1;
+      } else {
+        total.new += 1;
+      }
+      return total;
+    },
+    { new: 0, learned: 0, mastered: 0 }
   );
 }
 
