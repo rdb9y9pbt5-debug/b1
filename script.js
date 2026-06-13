@@ -26,7 +26,9 @@ const ACHIEVEMENTS = [
     name: "First Correct Answer",
     description: "Answer any quiz question correctly.",
     reward: 5,
-    scope: "profile"
+    scope: "profile",
+    metric: "correctAnswers",
+    target: 1
   },
   {
     id: "first-100-coins",
@@ -34,7 +36,29 @@ const ACHIEVEMENTS = [
     name: "First 100 Coins",
     description: "Reach 100 total coins.",
     reward: 10,
-    scope: "profile"
+    scope: "profile",
+    metric: "coins",
+    target: 100
+  },
+  {
+    id: "five-hundred-coins",
+    icon: "💰",
+    name: "500 Coins",
+    description: "Reach 500 total coins.",
+    reward: 0,
+    scope: "profile",
+    metric: "coins",
+    target: 500
+  },
+  {
+    id: "one-thousand-coins",
+    icon: "🏦",
+    name: "1000 Coins",
+    description: "Reach 1000 total coins.",
+    reward: 0,
+    scope: "profile",
+    metric: "coins",
+    target: 1000
   },
   {
     id: "ten-day-streak",
@@ -42,7 +66,39 @@ const ACHIEVEMENTS = [
     name: "10-Day Streak",
     description: "Reach a 10-day streak.",
     reward: 25,
-    scope: "profile"
+    scope: "profile",
+    metric: "streak",
+    target: 10
+  },
+  {
+    id: "thirty-day-streak",
+    icon: "🔥",
+    name: "30-Day Streak",
+    description: "Reach a 30-day streak.",
+    reward: 0,
+    scope: "profile",
+    metric: "streak",
+    target: 30
+  },
+  {
+    id: "hundred-day-streak",
+    icon: "🔥",
+    name: "100-Day Streak",
+    description: "Reach a 100-day streak.",
+    reward: 0,
+    scope: "profile",
+    metric: "streak",
+    target: 100
+  },
+  {
+    id: "ten-articles-mastered",
+    icon: "🏷",
+    name: "10 Articles Mastered",
+    description: "Master 10 article nouns.",
+    reward: 0,
+    scope: "profile",
+    metric: "articlesMastered",
+    target: 10
   },
   {
     id: "hundred-articles-mastered",
@@ -50,15 +106,49 @@ const ACHIEVEMENTS = [
     name: "100 Articles Mastered",
     description: "Master 100 article nouns.",
     reward: 25,
-    scope: "profile"
+    scope: "profile",
+    metric: "articlesMastered",
+    target: 100
+  },
+  {
+    id: "five-hundred-articles-mastered",
+    icon: "🏷",
+    name: "500 Articles Mastered",
+    description: "Master 500 article nouns.",
+    reward: 0,
+    scope: "profile",
+    metric: "articlesMastered",
+    target: 500
+  },
+  {
+    id: "family-home",
+    icon: "🏠",
+    name: "Family Home",
+    description: "Reach 500 family coins together.",
+    reward: 0,
+    scope: "family",
+    metric: "familyCoins",
+    target: 500
   },
   {
     id: "family-1000-coins",
-    icon: "🏦",
-    name: "1000 Family Coins",
+    icon: "🚗",
+    name: "Two-Car Family",
     description: "Reach 1000 family coins together.",
     reward: 0,
-    scope: "family"
+    scope: "family",
+    metric: "familyCoins",
+    target: 1000
+  },
+  {
+    id: "family-business",
+    icon: "🏦",
+    name: "Family Business",
+    description: "Reach 2000 family coins together.",
+    reward: 0,
+    scope: "family",
+    metric: "familyCoins",
+    target: 2000
   },
   {
     id: "noun-verb-explorer",
@@ -66,7 +156,19 @@ const ACHIEVEMENTS = [
     name: "Noun-Verb Explorer",
     description: "Answer 20 Noun-Verb questions correctly.",
     reward: 20,
-    scope: "profile"
+    scope: "profile",
+    metric: "nounVerbCorrect",
+    target: 20
+  },
+  {
+    id: "noun-verb-scholar",
+    icon: "🔗",
+    name: "Noun-Verb Scholar",
+    description: "Answer 100 Noun-Verb questions correctly.",
+    reward: 0,
+    scope: "profile",
+    metric: "nounVerbCorrect",
+    target: 100
   },
   {
     id: "test-personal-achievement",
@@ -219,6 +321,7 @@ const els = {
   dashboardNounVerbNew: document.querySelector("#dashboardNounVerbNew"),
   dashboardNounVerbLearned: document.querySelector("#dashboardNounVerbLearned"),
   dashboardNounVerbMastered: document.querySelector("#dashboardNounVerbMastered"),
+  nextAchievementCard: document.querySelector("#nextAchievementCard"),
   achievementsGrid: document.querySelector("#achievementsGrid"),
   challengeArticleNew: document.querySelector("#challengeArticleNew"),
   challengeArticleLearned: document.querySelector("#challengeArticleLearned"),
@@ -1151,36 +1254,105 @@ function renderAchievements() {
   const profile = getCurrentProfile();
   const profileUnlocked = new Set(getPersonalAchievementIds(profile));
   const familyUnlocked = new Set(getFamilyAchievementIds(profileStore));
+  const achievementStates = ACHIEVEMENTS.map((achievement) => {
+    const storedUnlocked = achievement.scope === "family"
+      ? familyUnlocked.has(achievement.id)
+      : profileUnlocked.has(achievement.id);
+    const progress = getAchievementProgress(achievement, profile);
+    const unlocked = storedUnlocked || progress.isComplete;
+    return { achievement, unlocked, progress };
+  });
+
+  renderNextAchievement(achievementStates);
 
   els.achievementsGrid.replaceChildren(
-    ...ACHIEVEMENTS.map((achievement) => {
-      const unlocked = achievement.scope === "family"
-        ? familyUnlocked.has(achievement.id)
-        : profileUnlocked.has(achievement.id);
+    ...achievementStates.map(({ achievement, unlocked, progress }) => {
       const badge = document.createElement("article");
       badge.className = "achievement-badge";
       badge.classList.toggle("unlocked", unlocked);
       badge.classList.toggle("locked", !unlocked);
       badge.replaceChildren(
-        createTextElement("span", "achievement-icon", unlocked ? achievement.icon : "🔒"),
-        createAchievementBody(achievement, unlocked)
+        createTextElement("span", "achievement-icon", unlocked ? `✓ ${achievement.icon}` : achievement.icon || "🔒"),
+        createAchievementBody(achievement, unlocked, progress)
       );
       return badge;
     })
   );
 }
 
-function createAchievementBody(achievement, unlocked) {
+function renderNextAchievement(achievementStates) {
+  if (!els.nextAchievementCard) return;
+  const nextAchievement = achievementStates
+    .filter(({ achievement, unlocked, progress }) => !achievement.testOnly && !unlocked && progress.target > 0)
+    .sort((first, second) => {
+      const firstRemaining = first.progress.target - first.progress.current;
+      const secondRemaining = second.progress.target - second.progress.current;
+      return firstRemaining - secondRemaining || second.progress.percent - first.progress.percent;
+    })[0];
+
+  if (!nextAchievement) {
+    els.nextAchievementCard.replaceChildren(
+      createTextElement("span", "next-achievement-label", "⭐ Next Achievement"),
+      createTextElement("strong", "", "All current achievements unlocked"),
+      createTextElement("small", "", "More goals can be added later.")
+    );
+    return;
+  }
+
+  const { achievement, progress } = nextAchievement;
+  els.nextAchievementCard.replaceChildren(
+    createTextElement("span", "next-achievement-label", "⭐ Next Achievement"),
+    createTextElement("strong", "", `${achievement.icon} ${achievement.name}`),
+    createTextElement("small", "", `${progress.current} / ${progress.target}`),
+    createProgressBar(progress.percent)
+  );
+}
+
+function createAchievementBody(achievement, unlocked, progress) {
   const body = document.createElement("div");
   const rewardText = achievement.reward > 0
     ? `Reward: +${achievement.reward} coins`
     : "Family achievement";
-  body.replaceChildren(
+  const children = [
     createTextElement("strong", "", achievement.name),
     createTextElement("span", "", achievement.description),
-    createTextElement("small", "", unlocked ? `Unlocked · ${rewardText}` : rewardText)
-  );
+    createTextElement("small", "achievement-progress-text", progress.target > 0 ? `${progress.current} / ${progress.target}` : unlocked ? "Unlocked" : "Locked")
+  ];
+  if (progress.target > 0) children.push(createProgressBar(progress.percent));
+  children.push(createTextElement("small", "", unlocked ? `Unlocked · ${rewardText}` : rewardText));
+  body.replaceChildren(...children);
   return body;
+}
+
+function createProgressBar(percent) {
+  const track = document.createElement("span");
+  const fill = document.createElement("span");
+  track.className = "achievement-progress";
+  fill.style.width = `${clamp(percent, 0, 100)}%`;
+  track.append(fill);
+  return track;
+}
+
+function getAchievementProgress(achievement, profile = getCurrentProfile()) {
+  const target = normalizeCounter(achievement.target);
+  const current = getAchievementCurrentValue(achievement, profile);
+  return {
+    current: target > 0 ? Math.min(current, target) : current,
+    raw: current,
+    target,
+    percent: target > 0 ? Math.min((current / target) * 100, 100) : 0,
+    isComplete: target > 0 ? current >= target : false
+  };
+}
+
+function getAchievementCurrentValue(achievement, profile = getCurrentProfile()) {
+  if (achievement.metric === "correctAnswers") return hasAnyCorrectQuizAnswer(profile) ? 1 : 0;
+  if (achievement.metric === "coins") return normalizeCoinCount(profile?.coins);
+  if (achievement.metric === "streak") return normalizeCounter(profile?.streak?.current);
+  if (achievement.metric === "articlesMastered") return getArticleSummary().mastered;
+  if (achievement.metric === "nounVerbCorrect") return getNounVerbCorrectAnswerCount(profile);
+  if (achievement.metric === "familyCoins") return getFamilyCoinTotal(profileStore.profiles);
+  return 0;
 }
 
 function renderAchievementDebugPanel() {
@@ -2239,13 +2411,8 @@ function checkAchievements(reason = "") {
 }
 
 function isAchievementConditionMet(achievement, profile) {
-  if (achievement.id === "first-correct-answer") return hasAnyCorrectQuizAnswer(profile);
-  if (achievement.id === "first-100-coins") return normalizeCoinCount(profile.coins) >= 100;
-  if (achievement.id === "ten-day-streak") return normalizeCounter(profile.streak?.current) >= 10;
-  if (achievement.id === "hundred-articles-mastered") return getArticleSummary().mastered >= 100;
-  if (achievement.id === "family-1000-coins") return getFamilyCoinTotal(profileStore.profiles) >= 1000;
-  if (achievement.id === "noun-verb-explorer") return getNounVerbCorrectAnswerCount(profile) >= 20;
-  return false;
+  if (achievement.testOnly) return false;
+  return getAchievementProgress(achievement, profile).isComplete;
 }
 
 function hasAnyCorrectQuizAnswer(profile) {
