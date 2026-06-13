@@ -75,6 +75,7 @@ const els = {
   lockError: document.querySelector("#lockError"),
   profileScreen: document.querySelector("#profileScreen"),
   profileGrid: document.querySelector("#profileGrid"),
+  profileDebug: document.querySelector("#profileDebug"),
   familyWealthCoins: document.querySelector("#familyWealthCoins"),
   familyWealthLevel: document.querySelector("#familyWealthLevel"),
   familyNextLevelName: document.querySelector("#familyNextLevelName"),
@@ -978,23 +979,25 @@ function confirmAndResetSavedPosition(key) {
 
 function renderProfileCards() {
   renderFamilyWealth();
+  const profileCards = DEFAULT_PROFILES.map((profileInfo) => {
+    const profile = profileStore.profiles[profileInfo.id];
+    const level = getCoinLevel(profile.coins);
+    const button = document.createElement("button");
+    button.className = "profile-card";
+    button.type = "button";
+    button.dataset.profileId = profile.id;
+    button.replaceChildren(
+      createAvatarElement(profile, "profile-avatar"),
+      createTextElement("span", "profile-name", profile.name),
+      createTextElement("span", "profile-level", `${level.icon} ${level.name}`),
+      createTextElement("span", "profile-coins", `${normalizeCoinCount(profile.coins)} Coins`)
+    );
+    return button;
+  });
   els.profileGrid.replaceChildren(
-    ...DEFAULT_PROFILES.map((profileInfo) => {
-      const profile = profileStore.profiles[profileInfo.id];
-      const level = getCoinLevel(profile.coins);
-      const button = document.createElement("button");
-      button.className = "profile-card";
-      button.type = "button";
-      button.dataset.profileId = profile.id;
-      button.replaceChildren(
-        createAvatarElement(profile, "profile-avatar"),
-        createTextElement("span", "profile-name", profile.name),
-        createTextElement("span", "profile-level", `${level.icon} ${level.name}`),
-        createTextElement("span", "profile-coins", `${normalizeCoinCount(profile.coins)} Coins`)
-      );
-      return button;
-    })
+    ...profileCards
   );
+  els.profileDebug.textContent = `Profiles loaded: ${profileCards.length}`;
 }
 
 function renderFamilyWealth() {

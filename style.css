@@ -86,16 +86,21 @@ body {
 }
 
 .profile-screen {
+  height: 100dvh;
   min-height: 100dvh;
   padding: max(14px, env(safe-area-inset-top)) max(16px, env(safe-area-inset-right)) max(14px, env(safe-area-inset-bottom)) max(16px, env(safe-area-inset-left));
   display: grid;
   place-items: center;
+  overflow-y: auto;
+  overflow-x: hidden;
+  -webkit-overflow-scrolling: touch;
 }
 
 .profile-panel {
   width: min(980px, 100%);
   display: grid;
   gap: 18px;
+  padding-bottom: 18px;
 }
 
 .profile-heading {
@@ -162,6 +167,8 @@ body {
 }
 
 .profile-card {
+  width: 100%;
+  max-width: 100%;
   min-height: 190px;
   border: 1px solid rgba(222, 216, 203, 0.95);
   border-radius: 8px;
@@ -177,6 +184,14 @@ body {
 
 .profile-card:active {
   transform: scale(0.99);
+}
+
+.profile-debug {
+  margin: 0;
+  color: var(--muted);
+  font-size: 0.84rem;
+  font-weight: 800;
+  text-align: center;
 }
 
 .avatar-wrap {
@@ -1308,6 +1323,26 @@ select,
   .top-actions {
     flex-wrap: nowrap;
     white-space: nowrap;
+  }
+
+  .profile-screen {
+    display: block;
+    overflow-y: auto;
+    overflow-x: hidden;
+  }
+
+  .profile-panel {
+    width: 100%;
+    align-content: start;
+  }
+
+  .profile-grid {
+    grid-template-columns: 1fr;
+    gap: 10px;
+  }
+
+  .profile-card {
+    min-height: 132px;
   }
 
   .dashboard-motivation {
