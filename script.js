@@ -466,6 +466,7 @@ function loadProfileStore() {
   });
   store.familyLevelsReached = normalizeFamilyLevelsReached(store.familyLevelsReached, store.profiles);
   store.familyAchievementsUnlocked = normalizeAchievementList(store.familyAchievementsUnlocked);
+  promoteFamilyAchievements(store);
 
   if (!store.migratedLegacyProgress) {
     const legacyProgress = readStorageObject(STORAGE_KEY);
@@ -501,6 +502,19 @@ function createProfileStore() {
       return profiles;
     }, {})
   };
+}
+
+function promoteFamilyAchievements(store) {
+  if (!store?.profiles) return store;
+  const familyIds = new Set(normalizeAchievementList(store.familyAchievementsUnlocked));
+  const familyAchievementIds = new Set(ACHIEVEMENTS.filter((achievement) => achievement.scope === "family").map((achievement) => achievement.id));
+  Object.values(store.profiles).forEach((profile) => {
+    normalizeAchievementList(profile?.achievementsUnlocked).forEach((achievementId) => {
+      if (familyAchievementIds.has(achievementId)) familyIds.add(achievementId);
+    });
+  });
+  store.familyAchievementsUnlocked = Array.from(familyIds);
+  return store;
 }
 
 function normalizeProfileData(data, profile) {
@@ -755,7 +769,9 @@ function applyRemoteProfileStore(remoteStore) {
     nounVerbProgress = profileStore.profiles[currentProfileId].nounVerbProgress;
   }
   applyingRemoteStore = false;
+  promoteFamilyAchievements(profileStore);
   refreshVisibleProfileState();
+  renderAchievementDebugPanel();
 }
 
 function mergeProfileStores(localStore, remoteStore) {
@@ -786,7 +802,7 @@ function mergeProfileStores(localStore, remoteStore) {
     ].map(String))
   );
   baseStore.migratedLegacyProgress = Boolean(localStore?.migratedLegacyProgress || remoteStore?.migratedLegacyProgress);
-  return baseStore;
+  return promoteFamilyAchievements(baseStore);
 }
 
 function mergeProfileData(localProfile, remoteProfile, defaultProfile) {
@@ -1663,12 +1679,12 @@ function bindEvents() {
     confirmAndResetSavedPosition("article");
   });
 
-  els.testPersonalAchievement.addEventListener("click", () => {
-    testPersonalAchievement();
+  els.testPersonalAchievement.addEventListener("click", async () => {
+    await testPersonalAchievement();
   });
 
-  els.testFamilyAchievement.addEventListener("click", () => {
-    testFamilyAchievement();
+  els.testFamilyAchievement.addEventListener("click", async () => {
+    await testFamilyAchievement();
   });
 
   if (els.csvInput) {
@@ -2253,7 +2269,7 @@ function showAchievementCelebration(achievement) {
   els.levelCelebration.classList.remove("hidden");
 }
 
-function testPersonalAchievement() {
+async function testPersonalAchievement() {
   if (!currentProfileId) return;
   const achievement = getAchievementById("test-personal-achievement");
   const profile = getCurrentProfile();
@@ -2269,12 +2285,13 @@ function testPersonalAchievement() {
   awardLevelBonusIfNeeded(profile);
   celebrateFamilyLevelIfNeeded();
   saveProfileStore();
+  await saveProfileStoreToCloudNow();
   renderAchievements();
   renderCoinLeaderboard();
   renderAchievementDebugPanel();
 }
 
-function testFamilyAchievement() {
+async function testFamilyAchievement() {
   const achievement = getAchievementById("test-family-achievement");
   if (!achievement || !profileStore) return;
   profileStore.familyAchievementsUnlocked = normalizeAchievementList(profileStore.familyAchievementsUnlocked);
@@ -2283,6 +2300,7 @@ function testFamilyAchievement() {
   }
   showAchievementCelebration(achievement);
   saveProfileStore();
+  await saveProfileStoreToCloudNow();
   renderAchievements();
   renderAchievementDebugPanel();
 }
