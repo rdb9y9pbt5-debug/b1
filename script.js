@@ -1402,17 +1402,21 @@ function getRecentlyEarnedAchievements(achievementStates) {
     .map((achievementId) => achievementStates.find(({ achievement, unlocked }) => achievement.id === achievementId && unlocked))
     .filter(Boolean)
     .filter(({ achievement }, index, list) => list.findIndex((item) => item.achievement.id === achievement.id) === index)
-    .slice(0, 3);
+    .slice(0, 2);
 }
 
 function getNextGoalAchievements(achievementStates) {
   const lockedGoals = achievementStates
     .filter(({ achievement, unlocked, progress }) => !achievement.testOnly && !unlocked && progress.target > 0);
-  return [
+  const preferredGoals = [
     getClosestAchievementByMetric(lockedGoals, ["coins"]),
     getClosestAchievementByMetric(lockedGoals, ["familyCoins"]),
     getClosestAchievementByMetric(lockedGoals, ["articlesMastered", "nounVerbCorrect", "streak", "correctAnswers"])
   ].filter(Boolean);
+  const fallbackGoals = lockedGoals
+    .sort(compareAchievementProgress)
+    .filter((goal) => !preferredGoals.some((preferred) => preferred.achievement.id === goal.achievement.id));
+  return [...preferredGoals, ...fallbackGoals].slice(0, 2);
 }
 
 function getClosestAchievementByMetric(achievementStates, metrics) {
