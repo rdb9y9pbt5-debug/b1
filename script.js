@@ -197,9 +197,12 @@ let answerShown = false;
 let selectedArticle = "";
 let articleQuizAnswered = false;
 let selectedQuizArticle = "";
-let nounVerbAnswered = false;
-let selectedNounVerbVerb = "";
-let nounVerbChoices = [];
+let nounVerbQuizState = {
+  currentQuestionId: "",
+  selectedAnswer: "",
+  hasAnswered: false,
+  currentChoices: []
+};
 let recentNounVerbQuestionIds = [];
 let progress = {};
 let articleProgress = {};
@@ -731,7 +734,6 @@ function refreshVisibleProfileState() {
   } else if (currentView === "coin-challenges") {
     renderCoinChallenges();
   } else if (currentView === "noun-verb") {
-    applyNounVerbSmartOrder();
     renderNounVerbQuiz();
   } else {
     updateStats();
@@ -861,6 +863,7 @@ function showNounVerbQuiz() {
   els.nounVerbStage.classList.remove("hidden");
   applyNounVerbSmartOrder();
   resumeNounVerbPosition();
+  generateNounVerbQuestion("open quiz", nounVerbCurrentIndex);
   renderNounVerbQuiz();
 }
 
@@ -1366,7 +1369,7 @@ function bindEvents() {
 
   els.nounVerbOptions.addEventListener("click", (event) => {
     const button = event.target.closest("button[data-verb]");
-    if (!button || nounVerbAnswered) return;
+    if (!button || nounVerbQuizState.hasAnswered) return;
     answerNounVerbQuiz(button.dataset.verb);
   });
 
@@ -2064,10 +2067,54 @@ function getWordsLearnedCount() {
   }).length;
 }
 
-function renderNounVerbQuiz() {
+function resetNounVerbQuizState() {
+  nounVerbQuizState = {
+    currentQuestionId: "",
+    selectedAnswer: "",
+    hasAnswered: false,
+    currentChoices: []
+  };
+}
+
+function getCurrentNounVerbPair() {
+  if (!nounVerbQuizState.currentQuestionId) return null;
+  return visibleNounVerbPairs.find((pair) => pair.id === nounVerbQuizState.currentQuestionId) || null;
+}
+
+function generateNounVerbQuestion(reason, targetIndex = nounVerbCurrentIndex) {
+  if (!visibleNounVerbPairs.length) {
+    resetNounVerbQuizState();
+    console.log("Noun-verb question generated", {
+      currentQuestionId: "",
+      reason,
+      availableQuestions: 0
+    });
+    return;
+  }
+
+  nounVerbCurrentIndex = clamp(targetIndex, 0, visibleNounVerbPairs.length - 1);
   const pair = visibleNounVerbPairs[nounVerbCurrentIndex];
+  nounVerbQuizState = {
+    currentQuestionId: pair.id,
+    selectedAnswer: "",
+    hasAnswered: false,
+    currentChoices: buildNounVerbChoices(pair)
+  };
+  rememberNounVerbQuestion(pair.id);
+  console.log("Noun-verb question generated", {
+    currentQuestionId: pair.id,
+    reason,
+    phrase: pair.phrase
+  });
+}
+
+function renderNounVerbQuiz() {
+  const pair = getCurrentNounVerbPair();
   const hasPair = Boolean(pair);
-  els.nounVerbStage.classList.toggle("noun-verb-result-visible", nounVerbAnswered);
+  if (hasPair) {
+    nounVerbCurrentIndex = visibleNounVerbPairs.findIndex((item) => item.id === pair.id);
+  }
+  els.nounVerbStage.classList.toggle("noun-verb-result-visible", nounVerbQuizState.hasAnswered);
   els.showAnswer.classList.add("hidden");
   els.ratingButtons.classList.add("hidden");
   els.previousCard.disabled = visibleNounVerbPairs.length < 2;
@@ -2085,27 +2132,25 @@ function renderNounVerbQuiz() {
     els.nounVerbOptions.replaceChildren();
     return;
   }
-  if (!nounVerbAnswered) rememberNounVerbQuestion(pair.id);
-
-  if (!nounVerbChoices.length || !nounVerbChoices.includes(pair.verb)) {
-    nounVerbChoices = buildNounVerbChoices(pair);
-  }
 
   els.nounVerbPrompt.textContent = buildNounVerbPrompt(pair);
   els.nounVerbOptions.replaceChildren(
-    ...nounVerbChoices.map((verb) => {
+    ...nounVerbQuizState.currentChoices.map((verb) => {
       const button = document.createElement("button");
       button.type = "button";
       button.dataset.verb = verb;
       button.textContent = verb;
-      button.disabled = nounVerbAnswered;
-      button.classList.toggle("correct", nounVerbAnswered && verb === pair.verb);
-      button.classList.toggle("incorrect", nounVerbAnswered && verb === selectedNounVerbVerb && verb !== pair.verb);
+      button.disabled = nounVerbQuizState.hasAnswered;
+      button.classList.toggle("correct", nounVerbQuizState.hasAnswered && verb === pair.verb);
+      button.classList.toggle(
+        "incorrect",
+        nounVerbQuizState.hasAnswered && verb === nounVerbQuizState.selectedAnswer && verb !== pair.verb
+      );
       return button;
     })
   );
 
-  if (nounVerbAnswered) renderNounVerbResult(pair);
+  if (nounVerbQuizState.hasAnswered) renderNounVerbResult(pair);
 }
 
 function buildNounVerbPrompt(pair) {
@@ -2124,24 +2169,29 @@ function buildNounVerbChoices(pair) {
 }
 
 function answerNounVerbQuiz(verb) {
-  const pair = visibleNounVerbPairs[nounVerbCurrentIndex];
-  if (!pair || nounVerbAnswered) return;
-  selectedNounVerbVerb = verb;
-  nounVerbAnswered = true;
+  const pair = getCurrentNounVerbPair();
+  if (!pair || nounVerbQuizState.hasAnswered) return;
   const isCorrect = verb === pair.verb;
+  nounVerbQuizState.selectedAnswer = verb;
+  nounVerbQuizState.hasAnswered = true;
+  console.log("Noun-verb answer clicked", {
+    currentQuestionId: pair.id,
+    selectedAnswer: verb,
+    correctAnswer: pair.verb,
+    isCorrect
+  });
   updateNounVerbLearningProgress(pair, isCorrect);
   if (isCorrect) awardCoins(2);
   recordStudyHistory("noun-verb", pair, isCorrect ? "correct" : "wrong");
   saveNounVerbProgress();
   saveNounVerbPosition();
-  rememberNounVerbQuestion(pair.id);
   renderNounVerbQuiz();
   renderCoinChallenges();
   if (currentView === "dashboard") renderDashboard();
 }
 
 function renderNounVerbResult(pair) {
-  const isCorrect = selectedNounVerbVerb === pair.verb;
+  const isCorrect = nounVerbQuizState.selectedAnswer === pair.verb;
   els.nounVerbResult.classList.remove("hidden", "success", "error");
   els.nounVerbResult.classList.add(isCorrect ? "success" : "error");
   els.nounVerbResult.innerHTML = `
@@ -2156,29 +2206,35 @@ function renderNounVerbResult(pair) {
     const verb = button.dataset.verb;
     button.disabled = true;
     button.classList.toggle("correct", verb === pair.verb);
-    button.classList.toggle("incorrect", verb === selectedNounVerbVerb && verb !== pair.verb);
+    button.classList.toggle("incorrect", verb === nounVerbQuizState.selectedAnswer && verb !== pair.verb);
   });
   els.nounVerbNext.classList.add("hidden");
 }
 
 function moveNounVerbCard(direction) {
   if (!visibleNounVerbPairs.length) return;
-  nounVerbCurrentIndex = direction > 0
+  if (direction > 0) applyNounVerbSmartOrder();
+  const nextIndex = direction > 0
     ? getNextNounVerbIndex()
     : (nounVerbCurrentIndex - 1 + visibleNounVerbPairs.length) % visibleNounVerbPairs.length;
-  nounVerbAnswered = false;
-  selectedNounVerbVerb = "";
-  nounVerbChoices = [];
+  console.log("Noun-verb Next clicked", {
+    direction,
+    fromQuestionId: nounVerbQuizState.currentQuestionId,
+    hasAnswered: nounVerbQuizState.hasAnswered,
+    nextIndex
+  });
+  generateNounVerbQuestion(direction > 0 ? "next/skip" : "previous", nextIndex);
   saveNounVerbPosition();
   renderNounVerbQuiz();
 }
 
 function applyNounVerbSmartOrder() {
+  const currentQuestionId = nounVerbQuizState.currentQuestionId;
   visibleNounVerbPairs = applyNounVerbPriorityOrder(nounVerbPairs);
-  nounVerbCurrentIndex = clamp(nounVerbCurrentIndex, 0, Math.max(visibleNounVerbPairs.length - 1, 0));
-  nounVerbAnswered = false;
-  selectedNounVerbVerb = "";
-  nounVerbChoices = [];
+  const currentQuestionIndex = visibleNounVerbPairs.findIndex((pair) => pair.id === currentQuestionId);
+  nounVerbCurrentIndex = currentQuestionIndex >= 0
+    ? currentQuestionIndex
+    : clamp(nounVerbCurrentIndex, 0, Math.max(visibleNounVerbPairs.length - 1, 0));
 }
 
 function getNextNounVerbIndex() {
