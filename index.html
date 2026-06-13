@@ -8,13 +8,16 @@
     <meta name="apple-mobile-web-app-title" content="SprachQuest">
     <meta name="apple-mobile-web-app-status-bar-style" content="default">
     <title>SprachQuest</title>
-    <link rel="stylesheet" href="style.css?v=50">
+    <link rel="stylesheet" href="style.css?v=51">
   </head>
   <body>
     <section class="lock-screen" id="lockScreen" aria-label="Password required">
       <form class="lock-card" id="lockForm">
-        <span class="brand-mark" aria-hidden="true">B1</span>
-        <h1>Goethe B1 Flashcards</h1>
+        <span class="brand-mark" aria-hidden="true">SQ</span>
+        <div class="brand-title-stack">
+          <h1>SprachQuest</h1>
+          <p>For the Zaghrout Family</p>
+        </div>
         <label>
           <span>Password</span>
           <input id="passwordInput" type="password" autocomplete="current-password" required>
@@ -27,7 +30,7 @@
     <section class="profile-screen hidden" id="profileScreen" aria-label="Choose profile">
       <div class="profile-panel">
         <div class="profile-heading">
-          <span class="brand-mark" aria-hidden="true">B1</span>
+          <span class="brand-mark" aria-hidden="true">SQ</span>
           <div>
             <h1>SprachQuest</h1>
             <p>For the Zaghrout Family</p>
@@ -58,10 +61,12 @@
     <main class="app-shell locked" id="appShell">
       <header class="topbar" aria-label="Study controls">
         <div class="brand">
-          <span class="brand-mark" aria-hidden="true">B1</span>
+          <span class="brand-mark" aria-hidden="true">SQ</span>
           <div>
-            <h1>Goethe B1 Flashcards</h1>
-            <p><span id="currentProfileLabel">No profile</span> · <span id="deckStatus">Loading vocabulary...</span></p>
+            <h1>SprachQuest</h1>
+            <p class="brand-family">For the Zaghrout Family</p>
+            <p class="brand-profile"><span id="currentProfileLabel">No profile</span></p>
+            <span class="sr-only" id="deckStatus">Loading vocabulary...</span>
           </div>
         </div>
         <div class="top-actions">
@@ -439,6 +444,6 @@
       </footer>
     </main>
 
-    <script type="module" src="script.js?v=50"></script>
+    <script type="module" src="script.js?v=51"></script>
   </body>
 </html>
