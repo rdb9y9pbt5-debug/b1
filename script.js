@@ -144,6 +144,7 @@ const els = {
   statArticleUnrated: document.querySelector("#statArticleUnrated"),
   statArticleGap: document.querySelector("#statArticleGap"),
   cardCounter: document.querySelector("#cardCounter"),
+  flashcard: document.querySelector("#flashcard"),
   cardMode: document.querySelector("#cardMode"),
   promptLabel: document.querySelector("#promptLabel"),
   questionText: document.querySelector("#questionText"),
@@ -1517,6 +1518,7 @@ function renderArticleResult(card) {
   const mode = els.modeSelect.value;
   if (!["article", "article-quiz"].includes(mode) || !card) {
     els.articleQuizResult.classList.add("hidden");
+    els.flashcard.classList.remove("quiz-result-visible");
     return;
   }
 
@@ -1537,6 +1539,7 @@ function renderArticleResult(card) {
   els.articleQuizResult.classList.toggle("hidden", !articleQuizAnswered);
   els.articleQuizResult.classList.toggle("success", articleQuizAnswered && isCorrect);
   els.articleQuizResult.classList.toggle("error", articleQuizAnswered && !isCorrect);
+  els.flashcard.classList.toggle("quiz-result-visible", articleQuizAnswered);
 
   els.articleGuess.querySelectorAll("button").forEach((button) => {
     const article = button.dataset.article;

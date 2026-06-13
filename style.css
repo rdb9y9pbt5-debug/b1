@@ -1042,6 +1042,8 @@ select,
 }
 
 .article-quiz-result {
+  max-width: 100%;
+  min-width: 0;
   border-radius: 8px;
   padding: clamp(14px, 2.4vw, 24px);
   text-align: center;
@@ -1058,6 +1060,7 @@ select,
 
 .quiz-result-answer {
   font-size: clamp(1.35rem, 3.4vw, 2.2rem);
+  overflow-wrap: anywhere;
 }
 
 .quiz-result-correction {
@@ -1350,6 +1353,25 @@ select,
     grid-template-rows: auto auto auto auto;
   }
 
+  .flashcard.quiz-result-visible {
+    gap: 6px;
+    grid-template-rows: auto auto auto;
+  }
+
+  .flashcard.quiz-result-visible .question-area {
+    align-self: start;
+    gap: 3px;
+  }
+
+  .flashcard.quiz-result-visible .question-area .eyebrow {
+    font-size: 0.68rem;
+  }
+
+  .flashcard.quiz-result-visible #questionText {
+    font-size: clamp(1.65rem, 8vw, 2.45rem);
+    line-height: 1;
+  }
+
   .profile-screen {
     display: block;
     overflow-y: auto;
@@ -1549,7 +1571,10 @@ select,
   .flashcard {
     padding: 12px;
     gap: 8px;
-    grid-template-rows: auto minmax(58px, 1fr) auto auto;
+    height: auto;
+    max-height: none;
+    overflow: visible;
+    grid-template-rows: auto auto auto auto;
   }
 
   .eyebrow {
@@ -1610,12 +1635,14 @@ select,
   }
 
   .article-quiz-result {
-    max-height: none;
-    overflow-y: visible;
+    max-height: min(42dvh, 260px);
+    overflow-y: auto;
     padding: 8px 10px;
     font-size: 0.9rem;
     gap: 4px;
     overflow-wrap: anywhere;
+    box-sizing: border-box;
+    -webkit-overflow-scrolling: touch;
   }
 
   .quiz-result-label {
