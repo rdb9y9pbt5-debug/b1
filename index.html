@@ -8,7 +8,7 @@
     <meta name="apple-mobile-web-app-title" content="B1 Karten">
     <meta name="apple-mobile-web-app-status-bar-style" content="default">
     <title>Goethe B1 Flashcards</title>
-    <link rel="stylesheet" href="style.css?v=41">
+    <link rel="stylesheet" href="style.css?v=42">
   </head>
   <body>
     <section class="lock-screen" id="lockScreen" aria-label="Password required">
@@ -92,12 +92,24 @@
           <div>
             <p class="eyebrow">Current Level</p>
             <h3><span id="levelIcon">🪙</span> <span id="levelName">Coin Pouch</span></h3>
-            <strong><span id="levelCoins">0</span> Coins</strong>
+            <strong><span id="levelProfileName">My</span> Coins: <span id="levelCoins">0</span></strong>
           </div>
           <div class="progress-track" aria-hidden="true">
             <span id="levelProgressFill"></span>
           </div>
           <p class="progress-note" id="levelProgressText">0 / 50 coins</p>
+        </article>
+
+        <article class="dashboard-family-wealth-card" aria-label="Family wealth">
+          <div>
+            <p class="eyebrow">🏦 Family Wealth</p>
+            <h3 id="dashboardFamilyLevel">🏚️ Broke Family</h3>
+            <strong>Family Wealth: <span id="dashboardFamilyCoins">0</span> Coins</strong>
+          </div>
+          <div class="progress-track" aria-hidden="true">
+            <span id="dashboardFamilyProgressFill"></span>
+          </div>
+          <p class="progress-note" id="dashboardFamilyProgressText">0 / 100 toward 🛒 Corner Shop</p>
         </article>
 
         <article class="earn-coins-card" aria-label="Earn coins">
@@ -348,6 +360,6 @@
       </footer>
     </main>
 
-    <script type="module" src="script.js?v=41"></script>
+    <script type="module" src="script.js?v=42"></script>
   </body>
 </html>

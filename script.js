@@ -94,9 +94,14 @@ const els = {
   dashboardArticleMastered: document.querySelector("#dashboardArticleMastered"),
   levelIcon: document.querySelector("#levelIcon"),
   levelName: document.querySelector("#levelName"),
+  levelProfileName: document.querySelector("#levelProfileName"),
   levelCoins: document.querySelector("#levelCoins"),
   levelProgressFill: document.querySelector("#levelProgressFill"),
   levelProgressText: document.querySelector("#levelProgressText"),
+  dashboardFamilyLevel: document.querySelector("#dashboardFamilyLevel"),
+  dashboardFamilyCoins: document.querySelector("#dashboardFamilyCoins"),
+  dashboardFamilyProgressFill: document.querySelector("#dashboardFamilyProgressFill"),
+  dashboardFamilyProgressText: document.querySelector("#dashboardFamilyProgressText"),
   levelCelebration: document.querySelector("#levelCelebration"),
   levelCelebrationTitle: document.querySelector("#levelCelebrationTitle"),
   levelCelebrationProfile: document.querySelector("#levelCelebrationProfile"),
@@ -747,6 +752,7 @@ function renderDashboard() {
   const articleSummary = getArticleSummary();
   const level = getCoinLevel(profile.coins);
   const levelPercent = getLevelProgressPercent(profile.coins, level);
+  const familySummary = getFamilyWealthSummary();
   const challenge = profile.dailyChallenge;
   const streak = getDisplayStreak(profile);
   profile.positions = normalizePositions(profile.positions);
@@ -758,11 +764,18 @@ function renderDashboard() {
   els.dashboardArticleMastered.textContent = articleSummary.mastered;
   els.levelIcon.textContent = level.icon;
   els.levelName.textContent = level.name;
+  els.levelProfileName.textContent = `${profile.name}'s`;
   els.levelCoins.textContent = normalizeCoinCount(profile.coins);
   els.levelProgressFill.style.width = `${levelPercent}%`;
   els.levelProgressText.textContent = level.next
     ? `${normalizeCoinCount(profile.coins)} / ${level.next} coins to next level`
     : "Max level reached";
+  els.dashboardFamilyLevel.textContent = `${familySummary.level.icon} ${familySummary.level.name}`;
+  els.dashboardFamilyCoins.textContent = familySummary.totalCoins;
+  els.dashboardFamilyProgressFill.style.width = `${familySummary.progressPercent}%`;
+  els.dashboardFamilyProgressText.textContent = familySummary.nextLevel.next
+    ? `${familySummary.totalCoins} / ${familySummary.nextLevel.next} toward ${familySummary.nextFamilyLevel.icon} ${familySummary.nextFamilyLevel.name}`
+    : "Max family level reached";
   els.challengeTitle.textContent = challenge.completed ? "✅ Complete" : "🎯 Today's Challenge";
   els.challengeReward.textContent = challenge.completed ? "+10 Coins Earned" : `Reward: +${DAILY_CHALLENGE_REWARD} coins`;
   els.challengeStatus.textContent = challenge.completed
