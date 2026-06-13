@@ -73,6 +73,7 @@ const els = {
   profileGrid: document.querySelector("#profileGrid"),
   familyWealthCoins: document.querySelector("#familyWealthCoins"),
   familyWealthLevel: document.querySelector("#familyWealthLevel"),
+  familyNextLevelName: document.querySelector("#familyNextLevelName"),
   familyGoalCoins: document.querySelector("#familyGoalCoins"),
   familyGoalRemaining: document.querySelector("#familyGoalRemaining"),
   familyWealthProgressFill: document.querySelector("#familyWealthProgressFill"),
@@ -537,12 +538,13 @@ function renderCoinLeaderboard() {
   els.leaderboardList.replaceChildren(
     ...rows.map((profile, index) => {
       const row = document.createElement("div");
+      const level = getCoinLevel(profile.coins);
       row.className = "leaderboard-row";
       row.classList.toggle("current", profile.id === currentProfileId);
       row.replaceChildren(
         createTextElement("span", "leaderboard-rank", medals[index] || ""),
         createAvatarElement(profile, "leaderboard-avatar"),
-        createTextElement("span", "leaderboard-name", profile.name),
+        createLeaderboardProfile(profile, level),
         createTextElement("strong", "", `${normalizeCoinCount(profile.coins)} coins`)
       );
       return row;
@@ -555,6 +557,16 @@ function createTextElement(tagName, className, text) {
   if (className) element.className = className;
   element.textContent = text;
   return element;
+}
+
+function createLeaderboardProfile(profile, level) {
+  const container = document.createElement("span");
+  container.className = "leaderboard-profile";
+  container.append(
+    createTextElement("span", "leaderboard-name", profile.name),
+    createTextElement("span", "leaderboard-level", `${level.icon} ${level.name}`)
+  );
+  return container;
 }
 
 function createAvatarElement(profile, extraClass = "") {
@@ -758,6 +770,9 @@ function renderFamilyWealth() {
   const summary = getFamilyWealthSummary();
   els.familyWealthLevel.textContent = `${summary.level.icon} ${summary.level.name}`;
   els.familyWealthCoins.textContent = summary.totalCoins;
+  els.familyNextLevelName.textContent = summary.nextLevel.next
+    ? `${summary.nextFamilyLevel.icon} ${summary.nextFamilyLevel.name}`
+    : "Max Family Level";
   els.familyGoalCoins.textContent = summary.nextLevel.next ? `${summary.nextLevel.next} Coins` : "Max Family Level";
   els.familyGoalRemaining.textContent = summary.remaining;
   els.familyWealthProgressFill.style.width = `${summary.progressPercent}%`;
@@ -772,10 +787,11 @@ function getFamilyWealthSummary() {
   const nextGoal = FAMILY_MILESTONES.find((milestone) => totalCoins < milestone.coins)
     || FAMILY_MILESTONES[FAMILY_MILESTONES.length - 1];
   const nextLevel = level.next ? level : { ...level, next: null };
+  const nextFamilyLevel = FAMILY_WEALTH_LEVELS.find((item) => item.min === level.next) || level;
   const nextTarget = nextLevel.next || nextGoal.coins;
   const remaining = Math.max(nextTarget - totalCoins, 0);
   const progressPercent = nextTarget ? Math.min((totalCoins / nextTarget) * 100, 100) : 100;
-  return { totalCoins, level, nextGoal, nextLevel, remaining, progressPercent };
+  return { totalCoins, level, nextGoal, nextLevel, nextFamilyLevel, remaining, progressPercent };
 }
 
 function getFamilyCoinTotal(profiles) {
