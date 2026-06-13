@@ -5,6 +5,10 @@ const STORAGE_KEY = "goethe-b1-flashcards-progress-v1";
 const ARTICLE_STORAGE_KEY = "goethe-b1-article-quiz-progress-v1";
 const PROFILE_STORAGE_KEY = "goethe-b1-profile-store-v1";
 const PROFILE_STORE_VERSION = 1;
+const SUPABASE_URL = "https://fpbgaaswsgfdlydaoids.supabase.co";
+const SUPABASE_ANON_KEY = "sb_publishable_LcLGhSMEDZnMnqMw8xvkAw_a6JPQsgH";
+const SUPABASE_SYNC_TABLE = "family_progress";
+const FAMILY_SYNC_ID = "zaghrout";
 
 const DEFAULT_PROFILES = [
   { id: "mineko", name: "Mineko", emoji: "⭐", avatar: "mineko.png" },
@@ -172,6 +176,10 @@ let searchResults = [];
 let randomSessionKey = "";
 let randomSessionIds = [];
 let currentView = "dashboard";
+let syncEnabled = false;
+let applyingRemoteStore = false;
+let cloudSaveTimer = 0;
+let cloudPullTimer = 0;
 
 document.addEventListener("DOMContentLoaded", init);
 
@@ -187,6 +195,7 @@ async function init() {
 async function unlockApp() {
   els.lockScreen.classList.add("hidden");
   profileStore = loadProfileStore();
+  await initializeFamilySync();
   bindEvents();
   try {
     const response = await fetch(CSV_URL, { cache: "no-store" });
@@ -203,6 +212,39 @@ async function unlockApp() {
   } else {
     showProfileScreen();
   }
+}
+
+async function initializeFamilySync() {
+  try {
+    const remoteStore = await fetchProfileStoreFromCloud();
+
+    if (remoteStore) {
+      applyRemoteProfileStore(remoteStore);
+    } else {
+      await saveProfileStoreToCloudNow();
+    }
+
+    syncEnabled = true;
+    startFamilySyncPolling();
+  } catch (error) {
+    syncEnabled = false;
+    console.warn("Family sync unavailable. Using this device only.", error);
+  }
+}
+
+function startFamilySyncPolling() {
+  window.clearInterval(cloudPullTimer);
+  cloudPullTimer = window.setInterval(async () => {
+    if (applyingRemoteStore) return;
+    const remoteStore = await fetchProfileStoreFromCloud();
+    if (remoteStore) applyRemoteProfileStore(remoteStore);
+  }, 5000);
+
+  document.addEventListener("visibilitychange", async () => {
+    if (document.visibilityState !== "visible" || applyingRemoteStore) return;
+    const remoteStore = await fetchProfileStoreFromCloud();
+    if (remoteStore) applyRemoteProfileStore(remoteStore);
+  });
 }
 
 function bindLockEvents() {
@@ -411,6 +453,195 @@ function readStorageObject(key) {
 
 function saveProfileStore() {
   localStorage.setItem(PROFILE_STORAGE_KEY, JSON.stringify(profileStore));
+  scheduleCloudSave();
+}
+
+function scheduleCloudSave() {
+  if (!syncEnabled || applyingRemoteStore) return;
+  window.clearTimeout(cloudSaveTimer);
+  cloudSaveTimer = window.setTimeout(() => {
+    saveProfileStoreToCloudNow();
+  }, 450);
+}
+
+async function saveProfileStoreToCloudNow() {
+  if (!profileStore) return;
+  try {
+    const response = await fetch(`${getSupabaseRowUrl()}?on_conflict=id`, {
+      method: "POST",
+      headers: getSupabaseHeaders({ prefer: "resolution=merge-duplicates,return=minimal" }),
+      body: JSON.stringify({
+        id: FAMILY_SYNC_ID,
+        profile_store: sanitizeProfileStoreForSync(profileStore),
+        updated_at: new Date().toISOString()
+      })
+    });
+    if (!response.ok) throw new Error(`Supabase save failed: ${response.status}`);
+  } catch (error) {
+    console.warn("Could not sync family progress. Local progress is still saved.", error);
+  }
+}
+
+async function fetchProfileStoreFromCloud() {
+  try {
+    const response = await fetch(`${getSupabaseRowUrl()}?id=eq.${encodeURIComponent(FAMILY_SYNC_ID)}&select=profile_store&limit=1`, {
+      headers: getSupabaseHeaders()
+    });
+    if (!response.ok) throw new Error(`Supabase load failed: ${response.status}`);
+    const rows = await response.json();
+    return rows?.[0]?.profile_store || null;
+  } catch (error) {
+    console.warn("Could not load shared family progress.", error);
+    return null;
+  }
+}
+
+function getSupabaseRowUrl() {
+  return `${SUPABASE_URL}/rest/v1/${SUPABASE_SYNC_TABLE}`;
+}
+
+function getSupabaseHeaders(options = {}) {
+  const headers = {
+    apikey: SUPABASE_ANON_KEY,
+    Authorization: `Bearer ${SUPABASE_ANON_KEY}`,
+    "Content-Type": "application/json"
+  };
+  if (options.prefer) headers.Prefer = options.prefer;
+  return headers;
+}
+
+function applyRemoteProfileStore(remoteStore) {
+  if (!remoteStore?.profiles) return;
+  const mergedStore = mergeProfileStores(profileStore, remoteStore);
+  applyingRemoteStore = true;
+  profileStore = mergedStore;
+  localStorage.setItem(PROFILE_STORAGE_KEY, JSON.stringify(profileStore));
+  if (currentProfileId && profileStore.profiles[currentProfileId]) {
+    progress = profileStore.profiles[currentProfileId].progress;
+    articleProgress = profileStore.profiles[currentProfileId].articleProgress;
+  }
+  applyingRemoteStore = false;
+  refreshVisibleProfileState();
+}
+
+function mergeProfileStores(localStore, remoteStore) {
+  const baseStore = {
+    ...createProfileStore(),
+    ...(localStore || {}),
+    ...(remoteStore || {}),
+    profiles: {}
+  };
+
+  DEFAULT_PROFILES.forEach((profile) => {
+    const localProfile = localStore?.profiles?.[profile.id];
+    const remoteProfile = remoteStore?.profiles?.[profile.id];
+    baseStore.profiles[profile.id] = mergeProfileData(localProfile, remoteProfile, profile);
+  });
+
+  baseStore.currentProfile = localStore?.currentProfile || remoteStore?.currentProfile || "";
+  baseStore.familyLevelsReached = Array.from(
+    new Set([
+      ...(Array.isArray(localStore?.familyLevelsReached) ? localStore.familyLevelsReached : []),
+      ...(Array.isArray(remoteStore?.familyLevelsReached) ? remoteStore.familyLevelsReached : [])
+    ].map(String))
+  );
+  baseStore.migratedLegacyProgress = Boolean(localStore?.migratedLegacyProgress || remoteStore?.migratedLegacyProgress);
+  return baseStore;
+}
+
+function mergeProfileData(localProfile, remoteProfile, defaultProfile) {
+  const local = normalizeProfileData(localProfile, defaultProfile);
+  const remote = normalizeProfileData(remoteProfile, defaultProfile);
+  return normalizeProfileData(
+    {
+      ...local,
+      ...remote,
+      coins: Math.max(normalizeCoinCount(local.coins), normalizeCoinCount(remote.coins)),
+      dailyChallenge: pickLatestDailyChallenge(local.dailyChallenge, remote.dailyChallenge),
+      streak: pickBestStreak(local.streak, remote.streak),
+      progress: mergeProgressEntries(local.progress, remote.progress),
+      articleProgress: mergeProgressEntries(local.articleProgress, remote.articleProgress),
+      positions: {
+        vocabulary: Math.max(normalizePosition(local.positions?.vocabulary), normalizePosition(remote.positions?.vocabulary)),
+        article: Math.max(normalizePosition(local.positions?.article), normalizePosition(remote.positions?.article)),
+        nounVerb: Math.max(normalizePosition(local.positions?.nounVerb), normalizePosition(remote.positions?.nounVerb))
+      },
+      levelBonusesAwarded: Array.from(new Set([...(local.levelBonusesAwarded || []), ...(remote.levelBonusesAwarded || [])])),
+      history: mergeHistory(local.history, remote.history),
+      lastStudyDate: latestString(local.lastStudyDate, remote.lastStudyDate),
+      settings: remote.settings || local.settings
+    },
+    defaultProfile
+  );
+}
+
+function mergeProgressEntries(localEntries = {}, remoteEntries = {}) {
+  const merged = { ...localEntries };
+  Object.entries(remoteEntries || {}).forEach(([cardId, remoteEntry]) => {
+    const localEntry = merged[cardId];
+    merged[cardId] = latestString(localEntry?.updatedAt, remoteEntry?.updatedAt) === localEntry?.updatedAt
+      ? localEntry
+      : remoteEntry;
+  });
+  return merged;
+}
+
+function mergeHistory(localHistory = [], remoteHistory = []) {
+  const byKey = new Map();
+  [...localHistory, ...remoteHistory].forEach((entry) => {
+    if (!entry?.studiedAt || !entry?.cardId) return;
+    byKey.set(`${entry.studiedAt}-${entry.cardId}-${entry.type}`, entry);
+  });
+  return [...byKey.values()]
+    .sort((first, second) => String(second.studiedAt).localeCompare(String(first.studiedAt)))
+    .slice(0, 200);
+}
+
+function pickLatestDailyChallenge(localChallenge, remoteChallenge) {
+  const localDate = localChallenge?.date || "";
+  const remoteDate = remoteChallenge?.date || "";
+  if (localDate > remoteDate) return localChallenge;
+  if (remoteDate > localDate) return remoteChallenge;
+  return {
+    date: localDate || remoteDate || getTodayKey(),
+    articleQuestions: Math.max(normalizeCounter(localChallenge?.articleQuestions), normalizeCounter(remoteChallenge?.articleQuestions)),
+    completed: Boolean(localChallenge?.completed || remoteChallenge?.completed)
+  };
+}
+
+function pickBestStreak(localStreak, remoteStreak) {
+  return {
+    activityDate: latestString(localStreak?.activityDate, remoteStreak?.activityDate) || getTodayKey(),
+    lastQualifiedDate: latestString(localStreak?.lastQualifiedDate, remoteStreak?.lastQualifiedDate),
+    current: Math.max(normalizeCounter(localStreak?.current), normalizeCounter(remoteStreak?.current)),
+    best: Math.max(normalizeCounter(localStreak?.best), normalizeCounter(remoteStreak?.best)),
+    articleQuestions: Math.max(normalizeCounter(localStreak?.articleQuestions), normalizeCounter(remoteStreak?.articleQuestions)),
+    vocabularyCards: Math.max(normalizeCounter(localStreak?.vocabularyCards), normalizeCounter(remoteStreak?.vocabularyCards))
+  };
+}
+
+function latestString(first = "", second = "") {
+  return String(first || "") >= String(second || "") ? first || "" : second || "";
+}
+
+function sanitizeProfileStoreForSync(store) {
+  return JSON.parse(JSON.stringify(store));
+}
+
+function refreshVisibleProfileState() {
+  if (!profileStore) return;
+  if (!currentProfileId) {
+    renderProfileCards();
+    return;
+  }
+  const profile = getCurrentProfile();
+  els.currentProfileLabel.textContent = `${profile.emoji} ${profile.name}`;
+  if (currentView === "dashboard") {
+    renderDashboard();
+  } else {
+    updateStats();
+    renderCard();
+  }
 }
 
 function showProfileScreen() {
