@@ -3139,7 +3139,7 @@ function answerMeaningMatchQuiz(choiceIndex) {
   meaningMatchQuizState.hasAnswered = true;
   const isCorrect = Boolean(choice.isCorrect);
   updateMeaningMatchLearningProgress(pair, isCorrect);
-  if (isCorrect) awardCoins(3);
+  if (isCorrect) awardCoins(2);
   recordStudyHistory("meaning-match", pair, isCorrect ? "correct" : "wrong");
   saveMeaningMatchProgress();
   renderMeaningMatchQuiz();
@@ -3159,7 +3159,7 @@ function renderMeaningMatchResult(pair) {
       <span class="quiz-result-meaning">${escapeHtml(getMeaningMatchMeaning(pair))}</span>
       <span class="quiz-result-answer">${escapeHtml(pair.phrase)}</span>
       <span class="quiz-result-meaning"><strong>Example:</strong> ${escapeHtml(correctSentence)}</span>
-      <span class="quiz-result-reward"><strong>Reward:</strong> 🪙🪙🪙 +3 Coins</span>
+      <span class="quiz-result-reward"><strong>Reward:</strong> 🪙🪙 +2 Coins</span>
     `
     : `
       <span class="quiz-result-label">❌ Wrong</span>
