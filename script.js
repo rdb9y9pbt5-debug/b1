@@ -61,11 +61,11 @@ const STANDARD_FILTERS = [
 ];
 
 const ARTICLE_FILTERS = [
-  ["allArticle", "All nouns"],
-  ["knownArticles", "Known article"],
-  ["unknownArticles", "Unknown article"],
-  ["unratedArticles", "Unrated article"],
-  ["articleGap", "Article gap"]
+  ["smartArticle", "Smart Review"],
+  ["newArticles", "New"],
+  ["learnedArticles", "Learned"],
+  ["masteredArticles", "Mastered"],
+  ["wrongRecently", "Wrong Recently"]
 ];
 
 const els = {
@@ -89,8 +89,9 @@ const els = {
   dashboardWelcome: document.querySelector("#dashboardWelcome"),
   dashboardWordsLearned: document.querySelector("#dashboardWordsLearned"),
   dashboardWordsTotal: document.querySelector("#dashboardWordsTotal"),
-  dashboardArticlesLearned: document.querySelector("#dashboardArticlesLearned"),
-  dashboardNounsTotal: document.querySelector("#dashboardNounsTotal"),
+  dashboardArticleNew: document.querySelector("#dashboardArticleNew"),
+  dashboardArticleLearned: document.querySelector("#dashboardArticleLearned"),
+  dashboardArticleMastered: document.querySelector("#dashboardArticleMastered"),
   levelIcon: document.querySelector("#levelIcon"),
   levelName: document.querySelector("#levelName"),
   levelCoins: document.querySelector("#levelCoins"),
@@ -139,9 +140,9 @@ const els = {
   statMeaningUnsure: document.querySelector("#statMeaningUnsure"),
   statMeaningUnknown: document.querySelector("#statMeaningUnknown"),
   statMeaningUnrated: document.querySelector("#statMeaningUnrated"),
-  statArticleKnown: document.querySelector("#statArticleKnown"),
-  statArticleUnknown: document.querySelector("#statArticleUnknown"),
-  statArticleUnrated: document.querySelector("#statArticleUnrated"),
+  statArticleNew: document.querySelector("#statArticleNew"),
+  statArticleLearned: document.querySelector("#statArticleLearned"),
+  statArticleMastered: document.querySelector("#statArticleMastered"),
   statArticleGap: document.querySelector("#statArticleGap"),
   cardCounter: document.querySelector("#cardCounter"),
   flashcard: document.querySelector("#flashcard"),
@@ -377,13 +378,25 @@ function normalizeMeaningProgress(savedProgress) {
 
 function normalizeArticleProgress(savedProgress) {
   return Object.fromEntries(
-    Object.entries(savedProgress).map(([cardId, entry]) => [
-      cardId,
-      {
-        ...entry,
-        articleStatus: normalizeArticleStatus(entry.articleStatus || entry.rating)
-      }
-    ])
+    Object.entries(savedProgress).map(([cardId, entry]) => {
+      const articleCorrectCount = normalizeCounter(entry.articleCorrectCount);
+      const articleWrongCount = normalizeCounter(entry.articleWrongCount);
+      return [
+        cardId,
+        {
+          ...entry,
+          articleCorrectCount,
+          articleWrongCount,
+          articleLastAnsweredAt: typeof entry.articleLastAnsweredAt === "string"
+            ? entry.articleLastAnsweredAt
+            : typeof entry.updatedAt === "string" ? entry.updatedAt : "",
+          articleLastWrongAt: typeof entry.articleLastWrongAt === "string"
+            ? entry.articleLastWrongAt
+            : articleWrongCount > 0 && typeof entry.updatedAt === "string" ? entry.updatedAt : "",
+          articleStatus: normalizeArticleStatus(entry.articleStatus || entry.rating, { articleCorrectCount })
+        }
+      ];
+    })
   );
 }
 
@@ -394,10 +407,11 @@ function normalizeMeaningStatus(value) {
   return "unrated";
 }
 
-function normalizeArticleStatus(value) {
-  if (value === "known") return "known";
-  if (value === "kindOf" || value === "unsure" || value === "unknown") return "unknown";
-  return "unrated";
+function normalizeArticleStatus(value, entry = {}) {
+  const correctCount = normalizeCounter(entry.articleCorrectCount);
+  if (value === "mastered" || correctCount >= 3) return "mastered";
+  if (value === "learned" || value === "known" || correctCount >= 1) return "learned";
+  return "new";
 }
 
 function normalizeCoinCount(value) {
@@ -739,8 +753,9 @@ function renderDashboard() {
   els.dashboardWelcome.textContent = `Welcome back, ${profile.name}`;
   els.dashboardWordsLearned.textContent = getWordsLearnedCount();
   els.dashboardWordsTotal.textContent = cards.length;
-  els.dashboardArticlesLearned.textContent = articleSummary.known;
-  els.dashboardNounsTotal.textContent = articleSummary.nouns;
+  els.dashboardArticleNew.textContent = articleSummary.new;
+  els.dashboardArticleLearned.textContent = articleSummary.learned;
+  els.dashboardArticleMastered.textContent = articleSummary.mastered;
   els.levelIcon.textContent = level.icon;
   els.levelName.textContent = level.name;
   els.levelCoins.textContent = normalizeCoinCount(profile.coins);
@@ -897,16 +912,16 @@ function handleDashboardAction(action) {
 
   if (action === "restart-articles") {
     if (!confirmAndResetSavedPosition("article")) return;
-    openStudyRoute({ mode: "article", filter: "allArticle", resume: false });
+    openStudyRoute({ mode: "article", filter: "smartArticle", resume: false });
     return;
   }
 
   const routes = {
     continue: { mode: "de-en", filter: "all", resume: true },
-    articles: { mode: "article", filter: "allArticle", resume: true },
-    "earn-coins": { mode: "article", filter: "allArticle", resume: true },
+    articles: { mode: "article", filter: "smartArticle", resume: true },
+    "earn-coins": { mode: "article", filter: "smartArticle", resume: true },
     "unknown-meanings": { mode: "de-en", filter: "unknownMeaning" },
-    "unknown-articles": { mode: "article", filter: "unknownArticles" },
+    "unknown-articles": { mode: "article", filter: "newArticles" },
     search: { mode: "de-en", filter: "all", focusSearch: true },
     statistics: { mode: els.modeSelect.value, filter: els.filterSelect.value, openStats: true }
   };
@@ -1284,10 +1299,10 @@ function applyModeAndFilter() {
     const articleStatus = getArticleStatus(card);
     if (mode === "article-quiz" || mode === "article") {
       if (!card.isNoun) return false;
-      if (filter === "knownArticles" && articleStatus !== "known") return false;
-      if (filter === "unknownArticles" && articleStatus !== "unknown") return false;
-      if (filter === "unratedArticles" && articleStatus !== "unrated") return false;
-      if (filter === "articleGap" && !(meaningStatus === "known" && articleStatus !== "known")) return false;
+      if (filter === "newArticles" && articleStatus !== "new") return false;
+      if (filter === "learnedArticles" && articleStatus !== "learned") return false;
+      if (filter === "masteredArticles" && articleStatus !== "mastered") return false;
+      if (filter === "wrongRecently" && !isWrongRecently(card)) return false;
       return true;
     }
     if (filter === "knownMeaning" && meaningStatus !== "known") return false;
@@ -1297,7 +1312,10 @@ function applyModeAndFilter() {
     return true;
   });
 
-  visibleCards = applyStudyOrder(applyStartLetter(filteredCards, startLetter), order);
+  const startedCards = applyStartLetter(filteredCards, startLetter);
+  visibleCards = (mode === "article-quiz" || mode === "article") && filter === "smartArticle"
+    ? applySmartArticleOrder(startedCards)
+    : applyStudyOrder(startedCards, order);
   currentIndex = clamp(currentIndex, 0, Math.max(visibleCards.length - 1, 0));
   answerShown = false;
   selectedArticle = "";
@@ -1503,11 +1521,11 @@ function updateStats() {
   els.statMeaningUnsure.textContent = meaning.unsure;
   els.statMeaningUnknown.textContent = meaning.unknown;
   els.statMeaningUnrated.textContent = meaning.unrated;
-  els.statArticleKnown.textContent = articles.known;
-  els.statArticleUnknown.textContent = articles.unknown;
-  els.statArticleUnrated.textContent = articles.unrated;
+  els.statArticleNew.textContent = articles.new;
+  els.statArticleLearned.textContent = articles.learned;
+  els.statArticleMastered.textContent = articles.mastered;
   els.statArticleGap.textContent = articles.gap;
-  els.statArticlesLearned.textContent = articles.known;
+  els.statArticlesLearned.textContent = articles.mastered;
   els.statNounsTotal.textContent = articles.nouns;
   els.statWordsLearned.textContent = getWordsLearnedCount();
   els.statWordsTotal.textContent = cards.length;
@@ -1563,25 +1581,50 @@ function answerArticleQuiz(article) {
   if (!card) return;
   selectedQuizArticle = article;
   articleQuizAnswered = true;
-  const status = article === card.article ? "known" : "unknown";
+  const isCorrect = article === card.article;
+  updateArticleLearningProgress(card, isCorrect);
   console.log("Article button clicked", {
     selectedArticle: article,
     correctArticle: card.article,
-    isCorrect: status === "known"
+    isCorrect
   });
-  articleProgress[card.id] = {
-    articleStatus: status,
-    updatedAt: new Date().toISOString()
-  };
-  if (status === "known") {
+  if (isCorrect) {
     awardCoins(1);
   }
   recordDailyActivity("article");
-  recordStudyHistory("article-quiz", card, status);
+  recordStudyHistory("article-quiz", card, isCorrect ? "correct" : "wrong");
   saveArticleProgress();
   saveCurrentPosition();
   updateStats();
   renderCard();
+}
+
+function updateArticleLearningProgress(card, isCorrect) {
+  const previous = getArticleProgressEntry(card);
+  const now = new Date().toISOString();
+  const articleCorrectCount = previous.articleCorrectCount + (isCorrect ? 1 : 0);
+  const articleWrongCount = previous.articleWrongCount + (isCorrect ? 0 : 1);
+  let articleStatus = previous.articleStatus;
+
+  if (isCorrect) {
+    articleStatus = articleCorrectCount >= 3 ? "mastered" : "learned";
+  } else if (articleStatus === "mastered") {
+    articleStatus = "learned";
+  } else if (articleStatus !== "learned") {
+    articleStatus = "new";
+  }
+
+  articleProgress[card.id] = {
+    ...previous,
+    articleCorrectCount,
+    articleWrongCount,
+    articleLastAnsweredAt: now,
+    articleLastWrongAt: isCorrect ? previous.articleLastWrongAt || "" : now,
+    articleStatus,
+    updatedAt: now
+  };
+
+  return articleStatus;
 }
 
 function awardCoins(amount) {
@@ -1676,11 +1719,13 @@ function updateStreakQualification(profile) {
 
 function rateArticleCard(rating) {
   const card = visibleCards[currentIndex];
+  const previous = getArticleProgressEntry(card);
   articleProgress[card.id] = {
-    articleStatus: normalizeArticleStatus(rating),
+    ...previous,
+    articleStatus: normalizeArticleStatus(rating, previous),
     updatedAt: new Date().toISOString()
   };
-  recordStudyHistory(els.modeSelect.value === "article" ? "article-practice" : "article-quiz", card, normalizeArticleStatus(rating));
+  recordStudyHistory(els.modeSelect.value === "article" ? "article-practice" : "article-quiz", card, getArticleStatus(card));
   saveArticleProgress();
 
   if (visibleCards.length > 1) {
@@ -1696,12 +1741,12 @@ function getArticleReviewLists() {
     (lists, card) => {
       if (!card.isNoun) return lists;
       const rating = getArticleStatus(card);
-      if (rating === "known") lists.known.push(card);
-      else if (rating === "unknown") lists.unknown.push(card);
-      else lists.unrated.push(card);
+      if (rating === "mastered") lists.mastered.push(card);
+      else if (rating === "learned") lists.learned.push(card);
+      else lists.new.push(card);
       return lists;
     },
-    { known: [], unknown: [], unrated: [] }
+    { new: [], learned: [], mastered: [] }
   );
 }
 
@@ -1716,9 +1761,45 @@ function getMeaningStatus(card) {
   return normalizeMeaningStatus(entry?.meaningStatus || entry?.rating);
 }
 
+function getArticleProgressEntry(card) {
+  const entry = articleProgress[card.id] || {};
+  const articleCorrectCount = normalizeCounter(entry.articleCorrectCount);
+  const articleWrongCount = normalizeCounter(entry.articleWrongCount);
+  return {
+    ...entry,
+    articleCorrectCount,
+    articleWrongCount,
+    articleLastAnsweredAt: typeof entry.articleLastAnsweredAt === "string"
+      ? entry.articleLastAnsweredAt
+      : typeof entry.updatedAt === "string" ? entry.updatedAt : "",
+    articleLastWrongAt: typeof entry.articleLastWrongAt === "string"
+      ? entry.articleLastWrongAt
+      : articleWrongCount > 0 && typeof entry.updatedAt === "string" ? entry.updatedAt : "",
+    articleStatus: normalizeArticleStatus(entry.articleStatus || entry.rating, { articleCorrectCount })
+  };
+}
+
 function getArticleStatus(card) {
-  const entry = articleProgress[card.id];
-  return normalizeArticleStatus(entry?.articleStatus || entry?.rating);
+  return getArticleProgressEntry(card).articleStatus;
+}
+
+function getArticleLastAnsweredMs(card) {
+  const lastAnswered = Date.parse(getArticleProgressEntry(card).articleLastAnsweredAt);
+  return Number.isFinite(lastAnswered) ? lastAnswered : 0;
+}
+
+function getArticleLastWrongMs(card) {
+  const lastWrong = Date.parse(getArticleProgressEntry(card).articleLastWrongAt);
+  return Number.isFinite(lastWrong) ? lastWrong : 0;
+}
+
+function isWrongRecently(card) {
+  const entry = getArticleProgressEntry(card);
+  if (!entry.articleWrongCount || entry.articleStatus === "mastered") return false;
+  const lastAnswered = getArticleLastWrongMs(card);
+  if (!lastAnswered) return false;
+  const sevenDays = 7 * 24 * 60 * 60 * 1000;
+  return Date.now() - lastAnswered <= sevenDays;
 }
 
 function getArticleSummary() {
@@ -1727,17 +1808,18 @@ function getArticleSummary() {
       if (!card.isNoun) return total;
       total.nouns += 1;
       total[getArticleStatus(card)] += 1;
-      if (getMeaningStatus(card) === "known" && getArticleStatus(card) !== "known") total.gap += 1;
+      if (isWrongRecently(card)) total.wrongRecently += 1;
+      if (getMeaningStatus(card) === "known" && getArticleStatus(card) !== "mastered") total.gap += 1;
       return total;
     },
-    { known: 0, unknown: 0, unrated: 0, gap: 0, nouns: 0 }
+    { new: 0, learned: 0, mastered: 0, wrongRecently: 0, gap: 0, nouns: 0 }
   );
 }
 
 function getWordsLearnedCount() {
   return cards.filter((card) => {
     const meaningKnown = getMeaningStatus(card) === "known";
-    const articleKnown = !card.isNoun || getArticleStatus(card) === "known";
+    const articleKnown = !card.isNoun || ["learned", "mastered"].includes(getArticleStatus(card));
     return meaningKnown && articleKnown;
   }).length;
 }
@@ -1804,6 +1886,40 @@ function shuffleCards(cardList) {
     [shuffled[index], shuffled[swapIndex]] = [shuffled[swapIndex], shuffled[index]];
   }
   return shuffled;
+}
+
+function applySmartArticleOrder(cardList) {
+  const wrongRecent = [];
+  const newCards = [];
+  const learned = [];
+  const mastered = [];
+
+  cardList.forEach((card) => {
+    const status = getArticleStatus(card);
+    if (isWrongRecently(card)) wrongRecent.push(card);
+    else if (status === "new") newCards.push(card);
+    else if (status === "learned") learned.push(card);
+    else mastered.push(card);
+  });
+
+  wrongRecent.sort((first, second) => getArticleLastWrongMs(second) - getArticleLastWrongMs(first));
+  newCards.sort(compareCardsByGerman);
+  learned.sort((first, second) => {
+    const firstProgress = getArticleProgressEntry(first);
+    const secondProgress = getArticleProgressEntry(second);
+    return firstProgress.articleCorrectCount - secondProgress.articleCorrectCount || compareCardsByGerman(first, second);
+  });
+  mastered.sort((first, second) => getArticleLastAnsweredMs(first) - getArticleLastAnsweredMs(second) || compareCardsByGerman(first, second));
+
+  const mainReview = [...wrongRecent, ...newCards, ...learned];
+  if (!mainReview.length) return mastered;
+
+  const occasionalMastered = mastered.filter((_, index) => index % 6 === 0);
+  return [...mainReview, ...occasionalMastered];
+}
+
+function compareCardsByGerman(first, second) {
+  return getSortKey(first.word).localeCompare(getSortKey(second.word), "de");
 }
 
 function getSortLetter(word) {

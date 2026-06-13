@@ -732,6 +732,31 @@ h1 {
   font-size: inherit;
 }
 
+.article-state-counts {
+  display: grid;
+  gap: 5px;
+  color: var(--muted);
+  font-size: clamp(0.8rem, 1.7vw, 0.92rem);
+  font-weight: 850;
+}
+
+.article-state-counts span {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  border-radius: 8px;
+  background: rgba(255, 253, 248, 0.72);
+  padding: 5px 8px;
+}
+
+.article-state-counts strong {
+  margin: 0;
+  color: var(--ink);
+  font-size: clamp(1rem, 2.4vw, 1.22rem);
+  line-height: 1;
+}
+
 .dashboard-actions {
   display: grid;
   grid-template-columns: repeat(3, minmax(0, 1fr));

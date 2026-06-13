@@ -8,7 +8,7 @@
     <meta name="apple-mobile-web-app-title" content="B1 Karten">
     <meta name="apple-mobile-web-app-status-bar-style" content="default">
     <title>Goethe B1 Flashcards</title>
-    <link rel="stylesheet" href="style.css?v=40">
+    <link rel="stylesheet" href="style.css?v=41">
   </head>
   <body>
     <section class="lock-screen" id="lockScreen" aria-label="Password required">
@@ -139,7 +139,11 @@
           </article>
           <article class="dashboard-card articles">
             <span>🏷 Articles</span>
-            <strong><span id="dashboardArticlesLearned">0</span> <small>/ <span id="dashboardNounsTotal">0</span></small></strong>
+            <div class="article-state-counts" aria-label="Article learning progress">
+              <span>New <strong id="dashboardArticleNew">0</strong></span>
+              <span>Learned <strong id="dashboardArticleLearned">0</strong></span>
+              <span>Mastered <strong id="dashboardArticleMastered">0</strong></span>
+            </div>
           </article>
         </div>
 
@@ -237,7 +241,7 @@
           <strong><span id="statWordsLearned">0</span> <small>/ <span id="statWordsTotal">0</span></small></strong>
         </article>
         <article class="summary-stat articles">
-          <span>Articles learned</span>
+          <span>Articles mastered</span>
           <strong><span id="statArticlesLearned">0</span> <small>/ <span id="statNounsTotal">0</span></small></strong>
         </article>
         <details class="detailed-stats">
@@ -260,16 +264,16 @@
               <strong id="statMeaningUnrated">0</strong>
             </article>
             <article>
-              <span>Article Known</span>
-              <strong id="statArticleKnown">0</strong>
+              <span>Article New</span>
+              <strong id="statArticleNew">0</strong>
             </article>
             <article>
-              <span>Article Unknown</span>
-              <strong id="statArticleUnknown">0</strong>
+              <span>Article Learned</span>
+              <strong id="statArticleLearned">0</strong>
             </article>
             <article>
-              <span>Article Unrated</span>
-              <strong id="statArticleUnrated">0</strong>
+              <span>Article Mastered</span>
+              <strong id="statArticleMastered">0</strong>
             </article>
             <article>
               <span>Article Gap</span>
@@ -344,6 +348,6 @@
       </footer>
     </main>
 
-    <script type="module" src="script.js?v=40"></script>
+    <script type="module" src="script.js?v=41"></script>
   </body>
 </html>
