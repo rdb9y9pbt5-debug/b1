@@ -454,6 +454,7 @@ let meaningMatchQuizState = {
 };
 let recentNounVerbQuestionIds = [];
 let recentNounVerbNouns = [];
+let recentMeaningMatchIds = [];
 let progress = {};
 let articleProgress = {};
 let nounVerbProgress = {};
@@ -3034,10 +3035,12 @@ function generateMeaningMatchQuestion(reason, targetIndex = meaningMatchCurrentI
     hasAnswered: false,
     currentChoices: buildMeaningMatchChoices(pair)
   };
+  rememberMeaningMatchQuestion(pair);
   console.log("Meaning Match question generated", {
-    currentQuestionId: pair.id,
+    selectedItemId: pair.id,
     reason,
-    phrase: pair.phrase
+    phrase: pair.phrase,
+    recentMeaningMatchIds: [...recentMeaningMatchIds]
   });
 }
 
@@ -3211,10 +3214,16 @@ function renderMeaningMatchResult(pair) {
 function moveMeaningMatchCard(direction) {
   if (!visibleMeaningMatchPairs.length) return;
   if (direction > 0) applyMeaningMatchSmartOrder();
-  meaningMatchCurrentIndex = direction > 0
-    ? (meaningMatchCurrentIndex + 1) % visibleMeaningMatchPairs.length
+  const nextIndex = direction > 0
+    ? getNextMeaningMatchIndex()
     : (meaningMatchCurrentIndex - 1 + visibleMeaningMatchPairs.length) % visibleMeaningMatchPairs.length;
-  generateMeaningMatchQuestion(direction > 0 ? "next/skip" : "previous", meaningMatchCurrentIndex);
+  console.log("Meaning Match Next clicked", {
+    direction,
+    fromQuestionId: meaningMatchQuizState.currentQuestionId,
+    nextIndex,
+    recentMeaningMatchIds: [...recentMeaningMatchIds]
+  });
+  generateMeaningMatchQuestion(direction > 0 ? "next/skip" : "previous", nextIndex);
   renderMeaningMatchQuiz();
 }
 
@@ -3225,6 +3234,53 @@ function applyMeaningMatchSmartOrder() {
   meaningMatchCurrentIndex = currentQuestionIndex >= 0
     ? currentQuestionIndex
     : clamp(meaningMatchCurrentIndex, 0, Math.max(visibleMeaningMatchPairs.length - 1, 0));
+}
+
+function getNextMeaningMatchIndex() {
+  if (visibleMeaningMatchPairs.length < 2) return meaningMatchCurrentIndex;
+  const recentIds = new Set(recentMeaningMatchIds);
+  const currentId = visibleMeaningMatchPairs[meaningMatchCurrentIndex]?.id;
+  const candidates = visibleMeaningMatchPairs
+    .map((pair, index) => ({ pair, index }))
+    .filter(({ pair }) => pair.id !== currentId);
+  const freshCandidates = candidates.filter(({ pair }) => !recentIds.has(pair.id));
+
+  const selectedIndex = pickMeaningMatchCandidateIndex(freshCandidates)
+    ?? pickMeaningMatchCandidateIndex(candidates)
+    ?? meaningMatchCurrentIndex;
+  const selectedPair = visibleMeaningMatchPairs[selectedIndex];
+  console.log("Meaning Match item selected", {
+    selectedItemId: selectedPair?.id || "",
+    phrase: selectedPair?.phrase || "",
+    recentMeaningMatchIds: [...recentMeaningMatchIds],
+    reasonSelected: freshCandidates.some(({ index }) => index === selectedIndex)
+      ? "selected outside recentMeaningMatchIds"
+      : "recent repeat allowed because no fresh candidate was available"
+  });
+  return selectedIndex;
+}
+
+function pickMeaningMatchCandidateIndex(candidates) {
+  if (!candidates.length) return null;
+  const bestRank = Math.min(...candidates.map(({ pair }) => getMeaningMatchPriorityRank(pair)));
+  const bestCandidates = candidates.filter(({ pair }) => getMeaningMatchPriorityRank(pair) === bestRank);
+  const weightedCandidates = shuffleCards(bestCandidates)
+    .sort((first, second) => getMeaningMatchRecentAge(second.pair.id) - getMeaningMatchRecentAge(first.pair.id));
+  return weightedCandidates[0]?.index ?? null;
+}
+
+function getMeaningMatchRecentAge(pairId) {
+  const index = recentMeaningMatchIds.indexOf(pairId);
+  return index === -1 ? recentMeaningMatchIds.length + 1 : index;
+}
+
+function rememberMeaningMatchQuestion(pairOrId) {
+  const pairId = typeof pairOrId === "string" ? pairOrId : pairOrId?.id || "";
+  if (!pairId) return;
+  recentMeaningMatchIds = [
+    pairId,
+    ...recentMeaningMatchIds.filter((id) => id !== pairId)
+  ].slice(0, 10);
 }
 
 function getNextNounVerbIndex() {
@@ -3318,6 +3374,14 @@ function applyNounVerbPriorityOrder(pairList) {
 function getNounVerbPriorityRank(pair) {
   if (isNounVerbWrongRecently(pair)) return 0;
   const status = getNounVerbStatus(pair);
+  if (status === "new") return 1;
+  if (status === "learned") return 2;
+  return 3;
+}
+
+function getMeaningMatchPriorityRank(pair) {
+  if (isMeaningMatchWrongRecently(pair)) return 0;
+  const status = getMeaningMatchStatus(pair);
   if (status === "new") return 1;
   if (status === "learned") return 2;
   return 3;
