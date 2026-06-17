@@ -542,6 +542,15 @@ h1 {
   font-weight: 800;
 }
 
+.challenge-mini-list {
+  margin: 4px 0 0;
+  padding-left: 18px;
+  color: var(--muted);
+  font-size: 0.92rem;
+  font-weight: 800;
+  line-height: 1.35;
+}
+
 .challenge-reward {
   border-radius: 8px;
   background: var(--amber-soft);

@@ -421,6 +421,7 @@ const els = {
   challengeMeaningMatchLearned: document.querySelector("#challengeMeaningMatchLearned"),
   challengeMeaningMatchMastered: document.querySelector("#challengeMeaningMatchMastered"),
   challengeMeaningMatchLoaded: document.querySelector("#challengeMeaningMatchLoaded"),
+  challengeVocabularyReviewNeeded: document.querySelector("#challengeVocabularyReviewNeeded"),
   challengeVocabularyReviewAnswered: document.querySelector("#challengeVocabularyReviewAnswered"),
   challengeVocabularyReviewCorrect: document.querySelector("#challengeVocabularyReviewCorrect"),
   challengeVocabularyReviewIncorrect: document.querySelector("#challengeVocabularyReviewIncorrect"),
@@ -1467,6 +1468,7 @@ function renderCoinChallenges() {
   const nounVerbSummary = getNounVerbSummary();
   const meaningMatchSummary = getMeaningMatchSummary();
   const vocabularyReviewStats = normalizeVocabularyReviewStats(getCurrentProfile().vocabularyReviewStats);
+  const vocabularyReviewCount = getVocabularyReviewCards().length;
   els.challengeArticleNew.textContent = articleSummary.new;
   els.challengeArticleLearned.textContent = articleSummary.learned;
   els.challengeArticleMastered.textContent = articleSummary.mastered;
@@ -1477,6 +1479,7 @@ function renderCoinChallenges() {
   els.challengeMeaningMatchLearned.textContent = meaningMatchSummary.learned;
   els.challengeMeaningMatchMastered.textContent = meaningMatchSummary.mastered;
   els.challengeMeaningMatchLoaded.textContent = meaningMatchItems.length;
+  els.challengeVocabularyReviewNeeded.textContent = vocabularyReviewCount;
   els.challengeVocabularyReviewAnswered.textContent = vocabularyReviewStats.answered;
   els.challengeVocabularyReviewCorrect.textContent = vocabularyReviewStats.correct;
   els.challengeVocabularyReviewIncorrect.textContent = vocabularyReviewStats.incorrect;
@@ -3296,7 +3299,7 @@ function renderVocabularyReviewQuiz() {
     return;
   }
 
-  els.nounVerbPrompt.textContent = card.word;
+  els.nounVerbPrompt.textContent = `German word:\n${card.word}`;
   els.nounVerbOptions.replaceChildren(
     ...vocabularyReviewQuizState.currentChoices.map((choice, index) => {
       const button = document.createElement("button");

@@ -8,7 +8,7 @@
     <meta name="apple-mobile-web-app-title" content="SprachQuest">
     <meta name="apple-mobile-web-app-status-bar-style" content="default">
     <title>SprachQuest</title>
-    <link rel="stylesheet" href="style.css?v=77">
+    <link rel="stylesheet" href="style.css?v=78">
   </head>
   <body>
     <section class="lock-screen" id="lockScreen" aria-label="Password required">
@@ -253,13 +253,18 @@
           <article class="coin-challenge-card">
             <div>
               <h3>📚 Vocabulary Review</h3>
-              <p>Test words you marked Unsure or Don't Know.</p>
+              <p>Test words you marked:</p>
+              <ul class="challenge-mini-list">
+                <li>Unsure</li>
+                <li>Don't Know</li>
+              </ul>
             </div>
             <div class="challenge-reward">
               <span>Reward:</span>
               <strong>🪙 +1 Coin</strong>
             </div>
             <div class="article-state-counts" aria-label="Vocabulary review stats">
+              <span>Review words <strong id="challengeVocabularyReviewNeeded">0</strong></span>
               <span>Answered <strong id="challengeVocabularyReviewAnswered">0</strong></span>
               <span>Correct <strong id="challengeVocabularyReviewCorrect">0</strong></span>
               <span>Wrong <strong id="challengeVocabularyReviewIncorrect">0</strong></span>
@@ -522,9 +527,9 @@
           <button class="dont-know" type="button" data-rating="unknown">I don’t know the meaning</button>
         </div>
       </footer>
-      <p class="app-version">SprachQuest v1.7</p>
+      <p class="app-version">SprachQuest v1.8</p>
     </main>
 
-    <script type="module" src="script.js?v=77"></script>
+    <script type="module" src="script.js?v=78"></script>
   </body>
 </html>
