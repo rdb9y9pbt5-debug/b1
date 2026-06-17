@@ -561,6 +561,7 @@ let recentMeaningMatchIds = [];
 let recentMeaningMatchTemplateIds = [];
 let meaningMatchGeneratedItems = new Map();
 let progress = {};
+let vocabularyProgress = {};
 let articleProgress = {};
 let nounVerbProgress = {};
 let meaningMatchProgress = {};
@@ -781,6 +782,7 @@ function normalizeProfileData(data, profile) {
     achievementsUnlocked: normalizeAchievementList(data?.achievementsUnlocked || data?.achievements),
     decks: data?.decks || {},
     progress: normalizeMeaningProgress(data?.progress || {}),
+    vocabularyProgress: normalizeVocabularyProgress(data?.vocabularyProgress || {}),
     articleProgress: normalizeArticleProgress(data?.articleProgress || {}),
     nounVerbProgress: normalizeNounVerbProgress(data?.nounVerbProgress || {}),
     meaningMatchProgress: normalizeNounVerbProgress(data?.meaningMatchProgress || {}),
@@ -820,6 +822,38 @@ function normalizeMeaningProgress(savedProgress) {
       }
     ])
   );
+}
+
+function normalizeVocabularyProgress(savedProgress) {
+  return Object.fromEntries(
+    Object.entries(savedProgress || {}).map(([cardId, entry]) => {
+      const correctCount = normalizeCounter(entry.correctCount);
+      const wrongCount = normalizeCounter(entry.wrongCount);
+      return [
+        cardId,
+        {
+          ...entry,
+          correctCount,
+          wrongCount,
+          lastAnsweredAt: typeof entry.lastAnsweredAt === "string"
+            ? entry.lastAnsweredAt
+            : typeof entry.updatedAt === "string" ? entry.updatedAt : "",
+          lastWrongAt: typeof entry.lastWrongAt === "string"
+            ? entry.lastWrongAt
+            : wrongCount > 0 && typeof entry.updatedAt === "string" ? entry.updatedAt : "",
+          status: normalizeVocabularyMasteryStatus(entry.status, { correctCount })
+        }
+      ];
+    })
+  );
+}
+
+function normalizeVocabularyMasteryStatus(value, counts = {}) {
+  const status = String(value || "").toLowerCase();
+  const correctCount = normalizeCounter(counts.correctCount);
+  if (status === "mastered" || correctCount >= 3) return "mastered";
+  if (status === "learned" || correctCount >= 1) return "learned";
+  return "new";
 }
 
 function normalizeArticleProgress(savedProgress) {
@@ -1040,6 +1074,7 @@ function applyRemoteProfileStore(remoteStore) {
   localStorage.setItem(PROFILE_STORAGE_KEY, JSON.stringify(profileStore));
   if (currentProfileId && profileStore.profiles[currentProfileId]) {
     progress = profileStore.profiles[currentProfileId].progress;
+    vocabularyProgress = profileStore.profiles[currentProfileId].vocabularyProgress;
     articleProgress = profileStore.profiles[currentProfileId].articleProgress;
     nounVerbProgress = profileStore.profiles[currentProfileId].nounVerbProgress;
     meaningMatchProgress = profileStore.profiles[currentProfileId].meaningMatchProgress;
@@ -1092,6 +1127,7 @@ function mergeProfileData(localProfile, remoteProfile, defaultProfile) {
       dailyChallenge: pickLatestDailyChallenge(local.dailyChallenge, remote.dailyChallenge),
       streak: pickBestStreak(local.streak, remote.streak),
       progress: mergeProgressEntries(local.progress, remote.progress),
+      vocabularyProgress: mergeProgressEntries(local.vocabularyProgress, remote.vocabularyProgress),
       articleProgress: mergeProgressEntries(local.articleProgress, remote.articleProgress),
       nounVerbProgress: mergeProgressEntries(local.nounVerbProgress, remote.nounVerbProgress),
       meaningMatchProgress: mergeProgressEntries(local.meaningMatchProgress, remote.meaningMatchProgress),
@@ -1195,6 +1231,7 @@ function refreshVisibleProfileState() {
 function showProfileScreen() {
   currentProfileId = "";
   progress = {};
+  vocabularyProgress = {};
   articleProgress = {};
   nounVerbProgress = {};
   meaningMatchProgress = {};
@@ -1212,6 +1249,7 @@ function selectProfile(profileId) {
   currentProfileId = profileId;
   profileStore.currentProfile = profileId;
   progress = profile.progress;
+  vocabularyProgress = profile.vocabularyProgress;
   articleProgress = profile.articleProgress;
   nounVerbProgress = profile.nounVerbProgress;
   meaningMatchProgress = profile.meaningMatchProgress;
@@ -2988,6 +3026,33 @@ function getMeaningStatus(card) {
   return normalizeMeaningStatus(entry?.meaningStatus || entry?.rating);
 }
 
+function getVocabularyProgressEntry(card) {
+  const entry = vocabularyProgress[card.id] || {};
+  const correctCount = normalizeCounter(entry.correctCount);
+  const wrongCount = normalizeCounter(entry.wrongCount);
+  return {
+    ...entry,
+    correctCount,
+    wrongCount,
+    lastAnsweredAt: typeof entry.lastAnsweredAt === "string"
+      ? entry.lastAnsweredAt
+      : typeof entry.updatedAt === "string" ? entry.updatedAt : "",
+    lastWrongAt: typeof entry.lastWrongAt === "string"
+      ? entry.lastWrongAt
+      : wrongCount > 0 && typeof entry.updatedAt === "string" ? entry.updatedAt : "",
+    status: normalizeVocabularyMasteryStatus(entry.status, { correctCount })
+  };
+}
+
+function getVocabularyMasteryStatus(card) {
+  return getVocabularyProgressEntry(card).status;
+}
+
+function getVocabularyLastAnsweredMs(card) {
+  const lastAnswered = Date.parse(getVocabularyProgressEntry(card).lastAnsweredAt);
+  return Number.isFinite(lastAnswered) ? lastAnswered : 0;
+}
+
 function getArticleProgressEntry(card) {
   const entry = articleProgress[card.id] || {};
   const articleCorrectCount = normalizeCounter(entry.articleCorrectCount);
@@ -3046,14 +3111,7 @@ function getArticleSummary() {
 function getWordLearningSummary() {
   return cards.reduce(
     (total, card) => {
-      const status = getMeaningStatus(card);
-      if (status === "known") {
-        total.mastered += 1;
-      } else if (status === "unsure") {
-        total.learned += 1;
-      } else {
-        total.new += 1;
-      }
+      total[getVocabularyMasteryStatus(card)] += 1;
       return total;
     },
     { new: 0, learned: 0, mastered: 0 }
@@ -3227,7 +3285,7 @@ function resetVocabularyReviewQuizState() {
 }
 
 function getVocabularyReviewCards() {
-  return cards.filter((card) => ["unsure", "unknown"].includes(getMeaningStatus(card)));
+  return cards;
 }
 
 function getCurrentVocabularyReviewCard() {
@@ -3237,11 +3295,33 @@ function getCurrentVocabularyReviewCard() {
 
 function applyVocabularyReviewOrder() {
   const currentQuestionId = vocabularyReviewQuizState.currentQuestionId;
-  visibleVocabularyReviewCards = shuffleCards(getVocabularyReviewCards());
+  visibleVocabularyReviewCards = applyVocabularyReviewPriorityOrder(getVocabularyReviewCards());
   const currentQuestionIndex = visibleVocabularyReviewCards.findIndex((card) => card.id === currentQuestionId);
   vocabularyReviewCurrentIndex = currentQuestionIndex >= 0
     ? currentQuestionIndex
     : clamp(vocabularyReviewCurrentIndex, 0, Math.max(visibleVocabularyReviewCards.length - 1, 0));
+}
+
+function applyVocabularyReviewPriorityOrder(cardList) {
+  const newCards = [];
+  const learned = [];
+  const mastered = [];
+
+  cardList.forEach((card) => {
+    const status = getVocabularyMasteryStatus(card);
+    if (status === "mastered") mastered.push(card);
+    else if (status === "learned") learned.push(card);
+    else newCards.push(card);
+  });
+
+  const randomizedNewCards = shuffleCards(newCards);
+  const randomizedLearned = shuffleCards(learned)
+    .sort((first, second) => getVocabularyProgressEntry(first).correctCount - getVocabularyProgressEntry(second).correctCount);
+  const randomizedMastered = shuffleCards(mastered)
+    .sort((first, second) => getVocabularyLastAnsweredMs(first) - getVocabularyLastAnsweredMs(second));
+
+  const occasionalMastered = randomizedMastered.filter((_, index) => index % 6 === 0);
+  return [...randomizedNewCards, ...randomizedLearned, ...occasionalMastered, ...randomizedMastered.filter((_, index) => index % 6 !== 0)];
 }
 
 function generateVocabularyReviewQuestion(reason, targetIndex = vocabularyReviewCurrentIndex) {
@@ -3292,9 +3372,9 @@ function renderVocabularyReviewQuiz() {
     ? `Card ${vocabularyReviewCurrentIndex + 1} of ${visibleVocabularyReviewCards.length}`
     : "0 / 0";
   if (!card) {
-    els.nounVerbPrompt.textContent = "No review words";
-    els.nounVerbEmptyState.querySelector("h2").textContent = "No review words available";
-    els.nounVerbEmptyState.querySelector("p").textContent = "Words marked Unsure or Don't Know will appear here.";
+    els.nounVerbPrompt.textContent = "No vocabulary words";
+    els.nounVerbEmptyState.querySelector("h2").textContent = "No vocabulary words available";
+    els.nounVerbEmptyState.querySelector("p").textContent = "Make sure vocabulary.csv is uploaded.";
     els.nounVerbOptions.replaceChildren();
     return;
   }
@@ -3336,23 +3416,33 @@ function answerVocabularyReviewQuiz(selectedAnswer) {
   vocabularyReviewQuizState.hasAnswered = true;
   updateVocabularyReviewStats(isCorrect);
   if (isCorrect) {
-    promoteVocabularyReviewCard(card);
     awardCoins(1);
   }
+  updateVocabularyMasteryProgress(card, isCorrect);
   recordStudyHistory("vocabulary-review", card, isCorrect ? "correct" : "wrong");
   recordDailyActivity("vocabulary");
-  saveProgress();
+  saveVocabularyProgress();
   renderVocabularyReviewQuiz();
   renderCoinChallenges();
 }
 
-function promoteVocabularyReviewCard(card) {
-  const currentStatus = getMeaningStatus(card);
-  const nextStatus = currentStatus === "unknown" ? "unsure" : currentStatus === "unsure" ? "known" : currentStatus;
-  progress[card.id] = {
-    ...(progress[card.id] || {}),
-    meaningStatus: nextStatus,
-    updatedAt: new Date().toISOString()
+function updateVocabularyMasteryProgress(card, isCorrect) {
+  const previous = getVocabularyProgressEntry(card);
+  const now = new Date().toISOString();
+  const correctCount = previous.correctCount + (isCorrect ? 1 : 0);
+  const wrongCount = previous.wrongCount + (isCorrect ? 0 : 1);
+  const status = isCorrect
+    ? correctCount >= 3 ? "mastered" : "learned"
+    : previous.status;
+
+  vocabularyProgress[card.id] = {
+    ...previous,
+    correctCount,
+    wrongCount,
+    lastAnsweredAt: now,
+    lastWrongAt: isCorrect ? previous.lastWrongAt || "" : now,
+    status,
+    updatedAt: now
   };
 }
 
@@ -4397,6 +4487,16 @@ function loadProgress() {
 function saveProgress() {
   if (!currentProfileId) return;
   getCurrentProfile().progress = progress;
+  saveProfileStore();
+}
+
+function loadVocabularyProgress() {
+  return getCurrentProfile()?.vocabularyProgress || {};
+}
+
+function saveVocabularyProgress() {
+  if (!currentProfileId) return;
+  getCurrentProfile().vocabularyProgress = vocabularyProgress;
   saveProfileStore();
 }
 
