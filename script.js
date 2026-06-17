@@ -295,54 +295,76 @@ const ARTICLE_FILTERS = [
 
 const MEANING_MATCH_TEMPLATES = [
   {
-    id: "i-want",
-    english: (meaning) => `I want to ${meaning}.`,
-    german: (phrase) => `Ich möchte ${phrase}.`
+    id: "family-weekend",
+    type: "infinitive",
+    english: (meaning) => `My family wants to ${meaning} this weekend.`,
+    german: (phrase) => `Meine Familie möchte am Wochenende ${phrase}.`
   },
   {
-    id: "can-you",
-    english: (meaning) => `Can you ${meaning}?`,
-    german: (phrase) => `Kannst du ${phrase}?`
+    id: "school-question",
+    type: "infinitive",
+    english: (meaning) => `Can you ${meaning} after class?`,
+    german: (phrase) => `Kannst du nach dem Unterricht ${phrase}?`
   },
   {
-    id: "she-will-tomorrow",
+    id: "work-team",
+    type: "infinitive",
+    english: (meaning) => `At work, the team has to ${meaning}.`,
+    german: (phrase) => `Bei der Arbeit muss das Team ${phrase}.`
+  },
+  {
+    id: "future-she",
+    type: "infinitive",
     english: (meaning) => `She will ${meaning} tomorrow.`,
     german: (phrase) => `Sie wird morgen ${phrase}.`
   },
   {
-    id: "they-next-week",
-    english: (meaning) => `They want to ${meaning} next week.`,
-    german: (phrase) => `Sie wollen nächste Woche ${phrase}.`
+    id: "future-they",
+    type: "infinitive",
+    english: (meaning) => `They will ${meaning} next week.`,
+    german: (phrase) => `Sie werden nächste Woche ${phrase}.`
   },
   {
-    id: "why-you",
+    id: "question-why",
+    type: "infinitive",
     english: (meaning) => `Why do you want to ${meaning}?`,
     german: (phrase) => `Warum willst du ${phrase}?`
   },
   {
-    id: "yesterday-he",
-    english: (meaning) => `Yesterday he wanted to ${meaning}.`,
-    german: (phrase) => `Gestern wollte er ${phrase}.`
+    id: "everyday-plan",
+    type: "infinitive",
+    english: (meaning) => `I want to ${meaning}.`,
+    german: (phrase) => `Ich möchte ${phrase}.`
   },
   {
-    id: "last-week-they",
-    english: (meaning) => `Last week they were able to ${meaning}.`,
-    german: (phrase) => `Letzte Woche konnten sie ${phrase}.`
+    id: "past-she-yesterday",
+    type: "perfect",
+    english: (meaning) => `She ${meaning.past} yesterday.`,
+    german: ({ aux, phrase }) => `Sie ${aux.she} gestern ${phrase}.`
   },
   {
-    id: "lena-should",
-    english: (meaning) => `Lena should ${meaning}.`,
-    german: (phrase) => `Lena sollte ${phrase}.`
+    id: "past-work",
+    type: "perfect",
+    english: (meaning) => `We ${meaning.past} after the meeting.`,
+    german: ({ aux, phrase }) => `Wir ${aux.we} nach der Besprechung ${phrase}.`
   },
   {
-    id: "tom-and-mia",
-    english: (meaning) => `Tom and Mia have to ${meaning}.`,
-    german: (phrase) => `Tom und Mia müssen ${phrase}.`
+    id: "past-school",
+    type: "perfect",
+    english: (meaning) => `He ${meaning.past} on the way to school.`,
+    german: ({ aux, phrase }) => `Er ${aux.he} auf dem Weg zur Schule ${phrase}.`
   },
   {
-    id: "will-the-team",
-    english: (meaning) => `Will the team ${meaning} soon?`,
-    german: (phrase) => `Wird das Team bald ${phrase}?`
+    id: "question-perfect",
+    type: "perfect",
+    english: (meaning) => `Did they ${meaning.base} yet?`,
+    german: ({ aux, phrase }) => `${capitalizeFirst(aux.they)} sie schon ${phrase}?`
+  },
+  {
+    id: "past-lena",
+    type: "perfect",
+    english: (meaning) => `Lena ${meaning.past} this morning.`,
+    german: ({ aux, phrase }) => `Lena ${aux.she} heute Morgen ${phrase}.`
   }
 ];
 
@@ -3457,19 +3479,19 @@ function getMeaningMatchMeaning(pair) {
 }
 
 function buildMeaningMatchQuestionData(pair) {
-  const template = getMeaningMatchTemplate();
-  const meaning = getMeaningMatchMeaning(pair);
+  const template = getMeaningMatchTemplate(pair);
+  const meaning = getMeaningMatchMeaningForms(pair);
   const correctPhrase = getMeaningMatchCleanPhrase(pair);
   const wrongVerb = getMeaningMatchWrongVerb(pair);
   const wrongPhrase = buildMeaningMatchWrongPhrase(pair, wrongVerb);
-  const correctSentence = template.german(correctPhrase);
-  const wrongSentence = template.german(wrongPhrase);
+  const correctSentence = buildMeaningMatchSentence(template, pair, correctPhrase, pair.verb);
+  const wrongSentence = buildMeaningMatchSentence(template, pair, wrongPhrase, wrongVerb);
   return {
     prompt: template.english(meaning),
     templateId: template.id,
     choices: shuffleCards([
-    { sentence: correctSentence, isCorrect: true },
-    { sentence: wrongSentence, isCorrect: false }
+      { sentence: correctSentence, isCorrect: true },
+      { sentence: wrongSentence, isCorrect: false }
     ])
   };
 }
@@ -3479,7 +3501,8 @@ function buildMeaningMatchChoices(pair) {
 }
 
 function getMeaningMatchCorrectSentence(pair) {
-  return getMeaningMatchTemplate().german(getMeaningMatchCleanPhrase(pair));
+  const template = getMeaningMatchTemplate(pair);
+  return buildMeaningMatchSentence(template, pair, getMeaningMatchCleanPhrase(pair), pair.verb);
 }
 
 function getMeaningMatchWrongVerb(pair) {
@@ -3494,7 +3517,8 @@ function buildMeaningMatchWrongSentence(pair, wrongVerb, correctSentence) {
   const escapedVerb = escapeRegExp(pair.verb);
   const verbPattern = new RegExp(escapedVerb, "i");
   if (verbPattern.test(correctSentence)) return correctSentence.replace(verbPattern, wrongVerb);
-  return getMeaningMatchTemplate().german(buildMeaningMatchWrongPhrase(pair, wrongVerb));
+  const template = getMeaningMatchTemplate(pair);
+  return buildMeaningMatchSentence(template, pair, buildMeaningMatchWrongPhrase(pair, wrongVerb), wrongVerb);
 }
 
 function buildMeaningMatchWrongPhrase(pair, wrongVerb) {
@@ -3509,10 +3533,139 @@ function getMeaningMatchCleanPhrase(pair) {
     .trim();
 }
 
-function getMeaningMatchTemplate() {
+function buildMeaningMatchSentence(template, pair, phrase, verb) {
+  if (template.type !== "perfect") return template.german(phrase);
+  const aux = getGermanPerfectAuxiliaryForms(pair.verb);
+  return template.german({
+    aux,
+    phrase: buildMeaningMatchPerfectPhrase(phrase, verb)
+  });
+}
+
+function getMeaningMatchMeaningForms(pair) {
+  const base = getMeaningMatchMeaning(pair);
+  return {
+    base,
+    past: getEnglishPastMeaning(base)
+  };
+}
+
+function getEnglishPastMeaning(meaning) {
+  const words = String(meaning || "").trim().split(/\s+/);
+  const verb = words.shift() || "";
+  const rest = words.length ? ` ${words.join(" ")}` : "";
+  const irregular = {
+    be: "was",
+    become: "became",
+    bring: "brought",
+    catch: "caught",
+    come: "came",
+    do: "did",
+    feel: "felt",
+    find: "found",
+    get: "got",
+    give: "gave",
+    go: "went",
+    have: "had",
+    hold: "held",
+    keep: "kept",
+    lay: "laid",
+    lead: "led",
+    make: "made",
+    meet: "met",
+    pay: "paid",
+    put: "put",
+    raise: "raised",
+    reach: "reached",
+    say: "said",
+    see: "saw",
+    set: "set",
+    spend: "spent",
+    take: "took",
+    win: "won"
+  };
+  return `${irregular[verb.toLowerCase()] || regularEnglishPast(verb)}${rest}`;
+}
+
+function regularEnglishPast(verb) {
+  if (!verb) return "";
+  if (/e$/i.test(verb)) return `${verb}d`;
+  if (/[^aeiou]y$/i.test(verb)) return `${verb.slice(0, -1)}ied`;
+  if (/([bcdfghjklmnpqrstvwxyz])$/i.test(verb) && /[aeiou][bcdfghjklmnpqrstvwxyz]$/i.test(verb)) return `${verb}${verb.slice(-1)}ed`;
+  return `${verb}ed`;
+}
+
+function capitalizeFirst(value) {
+  const text = String(value || "");
+  return text ? `${text.charAt(0).toUpperCase()}${text.slice(1)}` : "";
+}
+
+function buildMeaningMatchPerfectPhrase(phrase, verb) {
+  const escapedVerb = escapeRegExp(verb);
+  return phrase.replace(new RegExp(`${escapedVerb}$`, "i"), getGermanParticiple(verb));
+}
+
+function getGermanPerfectAuxiliaryForms(verb) {
+  const seinVerbs = new Set(["bleiben", "fahren", "fallen", "fliehen", "gehen", "gelangen", "geraten", "kommen", "laufen", "passieren", "reisen", "springen", "steigen", "sterben", "treten", "wachsen", "werden"]);
+  const isSein = seinVerbs.has(String(verb || "").toLowerCase());
+  return isSein
+    ? { he: "ist", she: "ist", we: "sind", they: "sind" }
+    : { he: "hat", she: "hat", we: "haben", they: "haben" };
+}
+
+function getGermanParticiple(verb) {
+  const normalized = String(verb || "").toLowerCase();
+  const participles = {
+    abgeben: "abgegeben",
+    ablegen: "abgelegt",
+    ableisten: "abgeleistet",
+    aufnehmen: "aufgenommen",
+    aufstellen: "aufgestellt",
+    auslösen: "ausgelöst",
+    ausüben: "ausgeübt",
+    befolgen: "befolgt",
+    bekommen: "bekommen",
+    bringen: "gebracht",
+    erheben: "erhoben",
+    erstatten: "erstattet",
+    finden: "gefunden",
+    geben: "gegeben",
+    gewinnen: "gewonnen",
+    halten: "gehalten",
+    hegen: "gehegt",
+    kündigen: "gekündigt",
+    legen: "gelegt",
+    leisten: "geleistet",
+    machen: "gemacht",
+    nehmen: "genommen",
+    spenden: "gespendet",
+    stellen: "gestellt",
+    treffen: "getroffen",
+    treten: "getreten",
+    üben: "geübt",
+    verbringen: "verbracht"
+  };
+  if (participles[normalized]) return participles[normalized];
+  if (/ieren$/.test(normalized)) return normalized.replace(/ieren$/, "iert");
+  if (/^(be|emp|ent|er|ge|miss|ver|zer)/.test(normalized)) return `${normalized.replace(/en$/, "")}t`;
+  return `ge${normalized.replace(/en$/, "")}t`;
+}
+
+function getMeaningMatchTemplate(pair) {
   const recentTemplates = new Set(recentMeaningMatchTemplateIds);
-  const freshTemplates = MEANING_MATCH_TEMPLATES.filter((template) => !recentTemplates.has(template.id));
-  return shuffleCards(freshTemplates.length ? freshTemplates : MEANING_MATCH_TEMPLATES)[0];
+  const compatibleTemplates = MEANING_MATCH_TEMPLATES.filter((template) => isMeaningMatchTemplateCompatible(template, pair));
+  const freshTemplates = compatibleTemplates.filter((template) => !recentTemplates.has(template.id));
+  return shuffleCards(freshTemplates.length ? freshTemplates : compatibleTemplates)[0] || MEANING_MATCH_TEMPLATES[0];
+}
+
+function isMeaningMatchTemplateCompatible(template, pair) {
+  if (template.type !== "perfect") return true;
+  return canBuildMeaningMatchPerfect(pair);
+}
+
+function canBuildMeaningMatchPerfect(pair) {
+  const phrase = getMeaningMatchCleanPhrase(pair);
+  return Boolean(pair?.verb && new RegExp(`${escapeRegExp(pair.verb)}$`, "i").test(phrase));
 }
 
 function rememberMeaningMatchTemplate(templateId) {
