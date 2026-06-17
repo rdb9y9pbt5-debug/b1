@@ -3379,7 +3379,7 @@ function renderVocabularyReviewQuiz() {
     return;
   }
 
-  els.nounVerbPrompt.textContent = `German word:\n${card.word}`;
+  els.nounVerbPrompt.textContent = card.word;
   els.nounVerbOptions.replaceChildren(
     ...vocabularyReviewQuizState.currentChoices.map((choice, index) => {
       const button = document.createElement("button");
