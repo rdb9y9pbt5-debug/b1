@@ -1705,6 +1705,13 @@ select,
   display: none !important;
 }
 
+.app-shell.clean-quiz-mode .study-stage:not(.hidden) .challenge-back-button,
+.app-shell.clean-quiz-mode .noun-verb-stage:not(.hidden) .challenge-back-button {
+  display: inline-flex !important;
+  align-items: center;
+  justify-content: center;
+}
+
 @media (max-width: 760px) {
   .app-shell {
     min-height: 560px;
