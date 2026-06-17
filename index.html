@@ -8,7 +8,7 @@
     <meta name="apple-mobile-web-app-title" content="SprachQuest">
     <meta name="apple-mobile-web-app-status-bar-style" content="default">
     <title>SprachQuest</title>
-    <link rel="stylesheet" href="style.css?v=69">
+    <link rel="stylesheet" href="style.css?v=73">
   </head>
   <body>
     <section class="lock-screen" id="lockScreen" aria-label="Password required">
@@ -252,6 +252,23 @@
 
           <article class="coin-challenge-card">
             <div>
+              <h3>📚 Vocabulary Review</h3>
+              <p>Test words you marked Unsure or Don't Know.</p>
+            </div>
+            <div class="challenge-reward">
+              <span>Reward:</span>
+              <strong>🪙 +1 Coin</strong>
+            </div>
+            <div class="article-state-counts" aria-label="Vocabulary review stats">
+              <span>Answered <strong id="challengeVocabularyReviewAnswered">0</strong></span>
+              <span>Correct <strong id="challengeVocabularyReviewCorrect">0</strong></span>
+              <span>Wrong <strong id="challengeVocabularyReviewIncorrect">0</strong></span>
+            </div>
+            <button type="button" data-challenge-action="vocabulary-review">Play</button>
+          </article>
+
+          <article class="coin-challenge-card">
+            <div>
               <h3>🌍 Meaning Match</h3>
               <p>Connect English meanings with German collocations.</p>
             </div>
@@ -416,6 +433,7 @@
 
       <section class="study-stage hidden" id="studyStage" aria-live="polite">
         <article class="flashcard" id="flashcard">
+          <button class="challenge-back-button hidden" id="studyChallengeBack" type="button">← Back to Challenges</button>
           <div class="card-meta">
             <span id="cardCounter">0 / 0</span>
             <span id="cardMode">German -> English</span>
@@ -467,6 +485,7 @@
 
       <section class="noun-verb-stage hidden" id="nounVerbStage" aria-live="polite">
         <article class="noun-verb-card">
+          <button class="challenge-back-button hidden" id="nounVerbChallengeBack" type="button">← Back to Challenges</button>
           <div class="card-meta">
             <span id="nounVerbCounter">0 / 0</span>
             <span id="nounVerbTitle">Noun-Verb Pairs</span>
@@ -502,8 +521,9 @@
           <button class="dont-know" type="button" data-rating="unknown">I don’t know the meaning</button>
         </div>
       </footer>
+      <p class="app-version">SprachQuest v1.4</p>
     </main>
 
-    <script type="module" src="script.js?v=69"></script>
+    <script type="module" src="script.js?v=73"></script>
   </body>
 </html>
