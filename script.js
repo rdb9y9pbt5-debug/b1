@@ -295,46 +295,55 @@ const ARTICLE_FILTERS = [
 
 const MEANING_MATCH_TEMPLATES = [
   {
-    id: "family-weekend",
+    id: "neutral-she",
     type: "infinitive",
-    english: (meaning) => `My family wants to ${meaning} this weekend.`,
-    german: (phrase) => `Meine Familie möchte am Wochenende ${phrase}.`
+    english: (meaning) => `She needs to ${meaning.base} today.`,
+    german: ({ phrase }) => `Sie muss heute ${phrase}.`
   },
   {
-    id: "school-question",
+    id: "neutral-we",
     type: "infinitive",
-    english: (meaning) => `Can you ${meaning} after class?`,
-    german: (phrase) => `Kannst du nach dem Unterricht ${phrase}?`
-  },
-  {
-    id: "work-team",
-    type: "infinitive",
-    english: (meaning) => `At work, the team has to ${meaning}.`,
-    german: (phrase) => `Bei der Arbeit muss das Team ${phrase}.`
-  },
-  {
-    id: "future-she",
-    type: "infinitive",
-    english: (meaning) => `She will ${meaning} tomorrow.`,
-    german: (phrase) => `Sie wird morgen ${phrase}.`
+    english: (meaning) => `We have to ${meaning.base} soon.`,
+    german: ({ phrase }) => `Wir müssen bald ${phrase}.`
   },
   {
     id: "future-they",
     type: "infinitive",
-    english: (meaning) => `They will ${meaning} next week.`,
-    german: (phrase) => `Sie werden nächste Woche ${phrase}.`
+    english: (meaning) => `They will ${meaning.base} next week.`,
+    german: ({ phrase }) => `Sie werden nächste Woche ${phrase}.`
+  },
+  {
+    id: "school-question",
+    type: "infinitive",
+    context: "school",
+    english: (meaning) => `Can you ${meaning.base} after class?`,
+    german: ({ phrase }) => `Kannst du nach dem Unterricht ${phrase}?`
+  },
+  {
+    id: "work-team",
+    type: "infinitive",
+    context: "work",
+    english: (meaning) => `At work, the team has to ${meaning.base}.`,
+    german: ({ phrase }) => `Bei der Arbeit muss das Team ${phrase}.`
+  },
+  {
+    id: "family-plan",
+    type: "infinitive",
+    context: "family",
+    english: (meaning) => `My family wants to ${meaning.base} this weekend.`,
+    german: ({ phrase }) => `Meine Familie möchte am Wochenende ${phrase}.`
   },
   {
     id: "question-why",
     type: "infinitive",
-    english: (meaning) => `Why do you want to ${meaning}?`,
-    german: (phrase) => `Warum willst du ${phrase}?`
+    english: (meaning) => `Why do you want to ${meaning.base}?`,
+    german: ({ phrase }) => `Warum willst du ${phrase}?`
   },
   {
     id: "everyday-plan",
     type: "infinitive",
-    english: (meaning) => `I want to ${meaning}.`,
-    german: (phrase) => `Ich möchte ${phrase}.`
+    english: (meaning) => `I want to ${meaning.base}.`,
+    german: ({ phrase }) => `Ich möchte ${phrase}.`
   },
   {
     id: "past-she-yesterday",
@@ -546,6 +555,7 @@ let recentNounVerbQuestionIds = [];
 let recentNounVerbNouns = [];
 let recentMeaningMatchIds = [];
 let recentMeaningMatchTemplateIds = [];
+let meaningMatchGeneratedItems = new Map();
 let progress = {};
 let articleProgress = {};
 let nounVerbProgress = {};
@@ -3468,7 +3478,7 @@ function renderMeaningMatchQuiz() {
 }
 
 function buildMeaningMatchEnglishPrompt(pair) {
-  return buildMeaningMatchQuestionData(pair).prompt;
+  return getMeaningMatchGeneratedItem(pair)?.englishSentence || "";
 }
 
 function getMeaningMatchMeaning(pair) {
@@ -3479,19 +3489,20 @@ function getMeaningMatchMeaning(pair) {
 }
 
 function buildMeaningMatchQuestionData(pair) {
-  const template = getMeaningMatchTemplate(pair);
-  const meaning = getMeaningMatchMeaningForms(pair);
-  const correctPhrase = getMeaningMatchCleanPhrase(pair);
-  const wrongVerb = getMeaningMatchWrongVerb(pair);
-  const wrongPhrase = buildMeaningMatchWrongPhrase(pair, wrongVerb);
-  const correctSentence = buildMeaningMatchSentence(template, pair, correctPhrase, pair.verb);
-  const wrongSentence = buildMeaningMatchSentence(template, pair, wrongPhrase, wrongVerb);
+  const generatedItem = getMeaningMatchGeneratedItem(pair);
+  if (!generatedItem) {
+    return {
+      prompt: "",
+      templateId: "",
+      choices: []
+    };
+  }
   return {
-    prompt: template.english(meaning),
-    templateId: template.id,
+    prompt: generatedItem.englishSentence,
+    templateId: generatedItem.templateId,
     choices: shuffleCards([
-      { sentence: correctSentence, isCorrect: true },
-      { sentence: wrongSentence, isCorrect: false }
+      { sentence: generatedItem.correctGermanSentence, isCorrect: true },
+      { sentence: generatedItem.wrongGermanSentence, isCorrect: false }
     ])
   };
 }
@@ -3501,24 +3512,28 @@ function buildMeaningMatchChoices(pair) {
 }
 
 function getMeaningMatchCorrectSentence(pair) {
-  const template = getMeaningMatchTemplate(pair);
-  return buildMeaningMatchSentence(template, pair, getMeaningMatchCleanPhrase(pair), pair.verb);
+  return getMeaningMatchGeneratedItem(pair)?.correctGermanSentence || "";
 }
 
-function getMeaningMatchWrongVerb(pair) {
+function getMeaningMatchWrongVerb(pair, template = null) {
   const sameNounVerbs = getMeaningMatchVerbsForNoun(pair.noun);
   const verbs = Array.from(new Set(nounVerbPairs
     .map((item) => item.verb)
-    .filter((verb) => verb && verb !== pair.verb && !sameNounVerbs.has(verb.toLowerCase()))));
-  return shuffleCards(verbs)[0] || "machen";
+    .filter((verb) => {
+      if (!verb || verb === pair.verb || sameNounVerbs.has(verb.toLowerCase())) return false;
+      if (template?.type === "perfect" && !hasReliableGermanParticiple(verb)) return false;
+      return true;
+    })))
+    .sort((first, second) => first.localeCompare(second, "de"));
+  if (!verbs.length) return "";
+  return verbs[getStableHash(pair.id || pair.phrase || pair.verb) % verbs.length];
 }
 
 function buildMeaningMatchWrongSentence(pair, wrongVerb, correctSentence) {
   const escapedVerb = escapeRegExp(pair.verb);
   const verbPattern = new RegExp(escapedVerb, "i");
   if (verbPattern.test(correctSentence)) return correctSentence.replace(verbPattern, wrongVerb);
-  const template = getMeaningMatchTemplate(pair);
-  return buildMeaningMatchSentence(template, pair, buildMeaningMatchWrongPhrase(pair, wrongVerb), wrongVerb);
+  return getMeaningMatchGeneratedItem(pair)?.wrongGermanSentence || "";
 }
 
 function buildMeaningMatchWrongPhrase(pair, wrongVerb) {
@@ -3533,9 +3548,40 @@ function getMeaningMatchCleanPhrase(pair) {
     .trim();
 }
 
-function buildMeaningMatchSentence(template, pair, phrase, verb) {
-  if (template.type !== "perfect") return template.german(phrase);
-  const aux = getGermanPerfectAuxiliaryForms(pair.verb);
+function getMeaningMatchGeneratedItem(pair) {
+  if (!pair?.id) return null;
+  if (meaningMatchGeneratedItems.has(pair.id)) return meaningMatchGeneratedItems.get(pair.id);
+  const generatedItem = createMeaningMatchGeneratedItem(pair);
+  meaningMatchGeneratedItems.set(pair.id, generatedItem);
+  return generatedItem;
+}
+
+function createMeaningMatchGeneratedItem(pair) {
+  if (!isMeaningMatchMeaningSafe(pair)) return null;
+  const template = getMeaningMatchTemplate(pair);
+  if (!template) return null;
+  const meaning = getMeaningMatchMeaningForms(pair);
+  const correctPhrase = getMeaningMatchCleanPhrase(pair);
+  const wrongVerb = getMeaningMatchWrongVerb(pair, template);
+  if (!wrongVerb) return null;
+  const wrongPhrase = buildMeaningMatchWrongPhrase(pair, wrongVerb);
+  if (!wrongPhrase || wrongPhrase === correctPhrase) return null;
+  const correctGermanSentence = buildMeaningMatchSentence(template, pair.verb, correctPhrase);
+  const wrongGermanSentence = buildMeaningMatchSentence(template, wrongVerb, wrongPhrase);
+  const englishSentence = template.english(meaning);
+  if (!isMeaningMatchSentenceQualitySafe(englishSentence, correctGermanSentence, wrongGermanSentence)) return null;
+  return {
+    phrase: pair.phrase,
+    englishSentence,
+    correctGermanSentence,
+    wrongGermanSentence,
+    templateId: template.id
+  };
+}
+
+function buildMeaningMatchSentence(template, verb, phrase) {
+  if (template.type !== "perfect") return template.german({ phrase });
+  const aux = getGermanPerfectAuxiliaryForms(verb);
   return template.german({
     aux,
     phrase: buildMeaningMatchPerfectPhrase(phrase, verb)
@@ -3559,8 +3605,11 @@ function getEnglishPastMeaning(meaning) {
     become: "became",
     bring: "brought",
     catch: "caught",
+    cancel: "canceled",
     come: "came",
+    contribute: "contributed",
     do: "did",
+    file: "filed",
     feel: "felt",
     find: "found",
     get: "got",
@@ -3581,6 +3630,8 @@ function getEnglishPastMeaning(meaning) {
     see: "saw",
     set: "set",
     spend: "spent",
+    submit: "submitted",
+    apologize: "apologized",
     take: "took",
     win: "won"
   };
@@ -3651,21 +3702,75 @@ function getGermanParticiple(verb) {
   return `ge${normalized.replace(/en$/, "")}t`;
 }
 
+function hasReliableGermanParticiple(verb) {
+  const normalized = String(verb || "").toLowerCase();
+  const knownParticiples = new Set([
+    "abgeben", "ablegen", "ableisten", "aufnehmen", "aufstellen", "auslösen", "ausüben",
+    "befolgen", "bekommen", "bringen", "erheben", "erstatten", "finden", "geben",
+    "gewinnen", "halten", "hegen", "kündigen", "legen", "leisten", "machen", "nehmen",
+    "spenden", "stellen", "treffen", "treten", "üben", "verbringen"
+  ]);
+  if (knownParticiples.has(normalized)) return true;
+  if (/ieren$/.test(normalized)) return true;
+  return false;
+}
+
 function getMeaningMatchTemplate(pair) {
   const recentTemplates = new Set(recentMeaningMatchTemplateIds);
   const compatibleTemplates = MEANING_MATCH_TEMPLATES.filter((template) => isMeaningMatchTemplateCompatible(template, pair));
   const freshTemplates = compatibleTemplates.filter((template) => !recentTemplates.has(template.id));
-  return shuffleCards(freshTemplates.length ? freshTemplates : compatibleTemplates)[0] || MEANING_MATCH_TEMPLATES[0];
+  const candidates = freshTemplates.length ? freshTemplates : compatibleTemplates;
+  if (!candidates.length) return null;
+  return candidates[getStableHash(`${pair.id || pair.phrase}::${recentMeaningMatchTemplateIds.join("|")}`) % candidates.length];
 }
 
 function isMeaningMatchTemplateCompatible(template, pair) {
+  if (template.context && !isMeaningMatchContextCompatible(template.context, pair)) return false;
   if (template.type !== "perfect") return true;
-  return canBuildMeaningMatchPerfect(pair);
+  return canBuildMeaningMatchPerfect(pair) && hasReliableGermanParticiple(pair.verb);
 }
 
 function canBuildMeaningMatchPerfect(pair) {
   const phrase = getMeaningMatchCleanPhrase(pair);
   return Boolean(pair?.verb && new RegExp(`${escapeRegExp(pair.verb)}$`, "i").test(phrase));
+}
+
+function isMeaningMatchContextCompatible(context, pair) {
+  const base = getMeaningMatchMeaning(pair).toLowerCase();
+  if (context === "work") {
+    return /\b(application|inquiry|order|arrangement|agreement|offer|speech|deposit|police report|claim|contribution|confession|remark|selection|authority|instruction|answer)\b/.test(base);
+  }
+  if (context === "school") {
+    return /\b(answer|question|speech|claim|contribution|selection|decision|action|remark|inquiry|application)\b/.test(base);
+  }
+  if (context === "family") {
+    return /\b(dinner|bath|evening|goodbye|selection|decision|arrangement|help|deposit|appointment|conversation)\b/.test(base);
+  }
+  return true;
+}
+
+function isMeaningMatchMeaningSafe(pair) {
+  const meaning = getMeaningMatchMeaning(pair).toLowerCase();
+  if (!meaning || meaning.length < 3) return false;
+  if (/^(be|being)\b/.test(meaning)) return false;
+  if (/\b(on|of|from|to|for|with|against|about|at|in)$/i.test(meaning)) return false;
+  if (/\bsomeone\b|\bsomething\b|\bsomebody\b|\bone's\b/.test(meaning)) return false;
+  return true;
+}
+
+function isMeaningMatchSentenceQualitySafe(englishSentence, correctGermanSentence, wrongGermanSentence) {
+  const sentence = englishSentence.toLowerCase();
+  const blockedPhrases = [
+    "make confusion",
+    "do an application",
+    "do a application",
+    "cause an application",
+    "make an accident",
+    "take a decision"
+  ];
+  if (blockedPhrases.some((phrase) => sentence.includes(phrase))) return false;
+  if (!correctGermanSentence || !wrongGermanSentence || correctGermanSentence === wrongGermanSentence) return false;
+  return true;
 }
 
 function rememberMeaningMatchTemplate(templateId) {
@@ -3685,7 +3790,7 @@ function isMeaningMatchEligiblePair(pair) {
   if (/\b(jdm|jdn|etw)\./i.test(pair.phrase)) return false;
   if (/\b(sich)\b/i.test(pair.phrase)) return false;
   if (/\b(Dat|Akk|Gen)\.|\+/i.test(pair.phrase)) return false;
-  return getMeaningMatchWrongVerb(pair) !== pair.verb;
+  return Boolean(getMeaningMatchGeneratedItem(pair));
 }
 
 function doesPhraseContainVerb(phrase, verb) {
