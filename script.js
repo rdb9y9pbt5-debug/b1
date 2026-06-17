@@ -1,5 +1,6 @@
 const CSV_URL = "vocabulary.csv";
 const NOUN_VERB_CSV_URL = "nomen_verb_verbindungen.csv";
+const MEANING_MATCH_CSV_URL = "meaning_match_items.csv";
 const APP_PASSWORD = "b1";
 const UNLOCK_STORAGE_KEY = "goethe-b1-flashcards-unlocked-v1";
 const STORAGE_KEY = "goethe-b1-flashcards-progress-v1";
@@ -419,6 +420,7 @@ const els = {
   challengeMeaningMatchNew: document.querySelector("#challengeMeaningMatchNew"),
   challengeMeaningMatchLearned: document.querySelector("#challengeMeaningMatchLearned"),
   challengeMeaningMatchMastered: document.querySelector("#challengeMeaningMatchMastered"),
+  challengeMeaningMatchLoaded: document.querySelector("#challengeMeaningMatchLoaded"),
   challengeVocabularyReviewAnswered: document.querySelector("#challengeVocabularyReviewAnswered"),
   challengeVocabularyReviewCorrect: document.querySelector("#challengeVocabularyReviewCorrect"),
   challengeVocabularyReviewIncorrect: document.querySelector("#challengeVocabularyReviewIncorrect"),
@@ -520,6 +522,7 @@ const els = {
 let cards = [];
 let visibleCards = [];
 let nounVerbPairs = [];
+let meaningMatchItems = [];
 let visibleNounVerbPairs = [];
 let visibleMeaningMatchPairs = [];
 let visibleVocabularyReviewCards = [];
@@ -606,6 +609,15 @@ async function unlockApp() {
   } catch (error) {
     console.warn("Could not load noun-verb pairs.", error);
     nounVerbPairs = [];
+  }
+  try {
+    const response = await fetch(MEANING_MATCH_CSV_URL, { cache: "no-store" });
+    if (!response.ok) throw new Error("Meaning Match file was not found.");
+    const csv = await response.text();
+    meaningMatchItems = normalizeMeaningMatchItems(parseCsv(csv));
+  } catch (error) {
+    console.warn("Could not load curated Meaning Match items.", error);
+    meaningMatchItems = [];
   }
   if (profileStore.currentProfile) {
     selectProfile(profileStore.currentProfile);
@@ -1464,6 +1476,7 @@ function renderCoinChallenges() {
   els.challengeMeaningMatchNew.textContent = meaningMatchSummary.new;
   els.challengeMeaningMatchLearned.textContent = meaningMatchSummary.learned;
   els.challengeMeaningMatchMastered.textContent = meaningMatchSummary.mastered;
+  els.challengeMeaningMatchLoaded.textContent = meaningMatchItems.length;
   els.challengeVocabularyReviewAnswered.textContent = vocabularyReviewStats.answered;
   els.challengeVocabularyReviewCorrect.textContent = vocabularyReviewStats.correct;
   els.challengeVocabularyReviewIncorrect.textContent = vocabularyReviewStats.incorrect;
@@ -2334,6 +2347,35 @@ function normalizeNounVerbPairs(rows) {
       seen.add(key);
       return true;
     });
+}
+
+function normalizeMeaningMatchItems(rows) {
+  const seen = new Set();
+  return rows
+    .filter((row) => row.id && row.phrase && row.englishsentence && row.correctgermansentence && row.wronggermansentence)
+    .map((row, index) => ({
+      id: slugify(row.id) || `meaning-match-${index}`,
+      phrase: row.phrase.trim(),
+      english: row.englishmeaning || "",
+      englishMeaning: row.englishmeaning || "",
+      englishSentence: row.englishsentence.trim(),
+      correctGermanSentence: row.correctgermansentence.trim(),
+      wrongGermanSentence: row.wronggermansentence.trim(),
+      example: row.example || "",
+      templateId: "curated"
+    }))
+    .filter((item) => {
+      if (!isMeaningMatchCuratedItemValid(item)) return false;
+      if (seen.has(item.id)) return false;
+      seen.add(item.id);
+      return true;
+    });
+}
+
+function isMeaningMatchCuratedItemValid(item) {
+  if (!item.englishSentence || !item.correctGermanSentence || !item.wrongGermanSentence) return false;
+  if (item.correctGermanSentence === item.wrongGermanSentence) return false;
+  return true;
 }
 
 function applyModeAndFilter() {
@@ -3447,7 +3489,7 @@ function renderMeaningMatchQuiz() {
   els.nounVerbResult.classList.add("hidden");
   els.nounVerbNext.classList.add("hidden");
   els.nounVerbEmptyState.querySelector("h2").textContent = "No meaning match questions";
-  els.nounVerbEmptyState.querySelector("p").textContent = "Try again after noun-verb pairs are loaded.";
+  els.nounVerbEmptyState.querySelector("p").textContent = "Make sure meaning_match_items.csv is uploaded.";
   els.nounVerbCounter.textContent = hasPair
     ? `Card ${meaningMatchCurrentIndex + 1} of ${visibleMeaningMatchPairs.length}`
     : "0 / 0";
@@ -3478,19 +3520,18 @@ function renderMeaningMatchQuiz() {
 }
 
 function buildMeaningMatchEnglishPrompt(pair) {
-  return getMeaningMatchGeneratedItem(pair)?.englishSentence || "";
+  return pair?.englishSentence || "";
 }
 
 function getMeaningMatchMeaning(pair) {
-  return String(pair.english || pair.phrase || "")
+  return String(pair.englishMeaning || pair.english || pair.phrase || "")
     .split(";")[0]
     .replace(/^to\s+/i, "")
     .trim() || pair.phrase;
 }
 
 function buildMeaningMatchQuestionData(pair) {
-  const generatedItem = getMeaningMatchGeneratedItem(pair);
-  if (!generatedItem) {
+  if (!isMeaningMatchEligiblePair(pair)) {
     return {
       prompt: "",
       templateId: "",
@@ -3498,11 +3539,11 @@ function buildMeaningMatchQuestionData(pair) {
     };
   }
   return {
-    prompt: generatedItem.englishSentence,
-    templateId: generatedItem.templateId,
+    prompt: pair.englishSentence,
+    templateId: pair.templateId || "curated",
     choices: shuffleCards([
-      { sentence: generatedItem.correctGermanSentence, isCorrect: true },
-      { sentence: generatedItem.wrongGermanSentence, isCorrect: false }
+      { sentence: pair.correctGermanSentence, isCorrect: true },
+      { sentence: pair.wrongGermanSentence, isCorrect: false }
     ])
   };
 }
@@ -3512,7 +3553,7 @@ function buildMeaningMatchChoices(pair) {
 }
 
 function getMeaningMatchCorrectSentence(pair) {
-  return getMeaningMatchGeneratedItem(pair)?.correctGermanSentence || "";
+  return pair?.correctGermanSentence || "";
 }
 
 function getMeaningMatchWrongVerb(pair, template = null) {
@@ -3530,10 +3571,11 @@ function getMeaningMatchWrongVerb(pair, template = null) {
 }
 
 function buildMeaningMatchWrongSentence(pair, wrongVerb, correctSentence) {
+  if (pair?.wrongGermanSentence) return pair.wrongGermanSentence;
   const escapedVerb = escapeRegExp(pair.verb);
   const verbPattern = new RegExp(escapedVerb, "i");
   if (verbPattern.test(correctSentence)) return correctSentence.replace(verbPattern, wrongVerb);
-  return getMeaningMatchGeneratedItem(pair)?.wrongGermanSentence || "";
+  return "";
 }
 
 function buildMeaningMatchWrongPhrase(pair, wrongVerb) {
@@ -3782,15 +3824,7 @@ function rememberMeaningMatchTemplate(templateId) {
 }
 
 function isMeaningMatchEligiblePair(pair) {
-  if (!pair?.phrase || !pair?.verb || !pair?.english) return false;
-  if (!/^to\s+/i.test(pair.english)) return false;
-  if (!doesPhraseContainVerb(pair.phrase, pair.verb)) return false;
-  if (getMeaningMatchVerbsForNoun(pair.noun).size > 1) return false;
-  if (/[/(]/.test(pair.phrase)) return false;
-  if (/\b(jdm|jdn|etw)\./i.test(pair.phrase)) return false;
-  if (/\b(sich)\b/i.test(pair.phrase)) return false;
-  if (/\b(Dat|Akk|Gen)\.|\+/i.test(pair.phrase)) return false;
-  return Boolean(getMeaningMatchGeneratedItem(pair));
+  return isMeaningMatchCuratedItemValid(pair);
 }
 
 function doesPhraseContainVerb(phrase, verb) {
@@ -3870,7 +3904,7 @@ function moveMeaningMatchCard(direction) {
 
 function applyMeaningMatchSmartOrder() {
   const currentQuestionId = meaningMatchQuizState.currentQuestionId;
-  visibleMeaningMatchPairs = applyMeaningMatchPriorityOrder(nounVerbPairs);
+  visibleMeaningMatchPairs = applyMeaningMatchPriorityOrder(meaningMatchItems);
   const currentQuestionIndex = visibleMeaningMatchPairs.findIndex((pair) => pair.id === currentQuestionId);
   meaningMatchCurrentIndex = currentQuestionIndex >= 0
     ? currentQuestionIndex
@@ -4188,7 +4222,7 @@ function isMeaningMatchWrongRecently(pair) {
 }
 
 function getMeaningMatchSummary() {
-  return nounVerbPairs.filter(isMeaningMatchEligiblePair).reduce(
+  return meaningMatchItems.filter(isMeaningMatchEligiblePair).reduce(
     (total, pair) => {
       total[getMeaningMatchStatus(pair)] += 1;
       return total;
