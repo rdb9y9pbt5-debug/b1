@@ -1,6 +1,8 @@
 const CSV_URL = "vocabulary.csv";
 const NOUN_VERB_CSV_URL = "nomen_verb_verbindungen.csv";
 const MEANING_MATCH_CSV_URL = "meaning_match_items.csv";
+const RECENT_VOCABULARY_WORD_BUFFER = 100;
+const WRONG_VOCABULARY_WAIT_BUFFER = 20;
 const APP_PASSWORD = "b1";
 const UNLOCK_STORAGE_KEY = "goethe-b1-flashcards-unlocked-v1";
 const STORAGE_KEY = "goethe-b1-flashcards-progress-v1";
@@ -458,6 +460,7 @@ const els = {
   nounVerbChallengeBack: document.querySelector("#nounVerbChallengeBack"),
   nounVerbCounter: document.querySelector("#nounVerbCounter"),
   nounVerbTitle: document.querySelector("#nounVerbTitle"),
+  vocabularyReviewDebug: document.querySelector("#vocabularyReviewDebug"),
   nounVerbInstruction: document.querySelector("#nounVerbInstruction"),
   nounVerbPrompt: document.querySelector("#nounVerbPrompt"),
   nounVerbOptions: document.querySelector("#nounVerbOptions"),
@@ -559,6 +562,7 @@ let recentNounVerbQuestionIds = [];
 let recentNounVerbNouns = [];
 let recentMeaningMatchIds = [];
 let recentMeaningMatchTemplateIds = [];
+let recentVocabularyWords = [];
 let meaningMatchGeneratedItems = new Map();
 let progress = {};
 let vocabularyProgress = {};
@@ -3175,6 +3179,7 @@ function renderNounVerbQuiz() {
     nounVerbCurrentIndex = visibleNounVerbPairs.findIndex((item) => item.id === pair.id);
   }
   els.nounVerbTitle.textContent = "Noun-Verb Pairs";
+  els.vocabularyReviewDebug.classList.add("hidden");
   els.nounVerbInstruction.textContent = "Choose the verb";
   els.nounVerbStage.classList.toggle("noun-verb-result-visible", nounVerbQuizState.hasAnswered);
   els.showAnswer.classList.add("hidden");
@@ -3303,25 +3308,10 @@ function applyVocabularyReviewOrder() {
 }
 
 function applyVocabularyReviewPriorityOrder(cardList) {
-  const newCards = [];
-  const learned = [];
-  const mastered = [];
-
-  cardList.forEach((card) => {
-    const status = getVocabularyMasteryStatus(card);
-    if (status === "mastered") mastered.push(card);
-    else if (status === "learned") learned.push(card);
-    else newCards.push(card);
-  });
-
-  const randomizedNewCards = shuffleCards(newCards);
-  const randomizedLearned = shuffleCards(learned)
-    .sort((first, second) => getVocabularyProgressEntry(first).correctCount - getVocabularyProgressEntry(second).correctCount);
-  const randomizedMastered = shuffleCards(mastered)
-    .sort((first, second) => getVocabularyLastAnsweredMs(first) - getVocabularyLastAnsweredMs(second));
-
-  const occasionalMastered = randomizedMastered.filter((_, index) => index % 6 === 0);
-  return [...randomizedNewCards, ...randomizedLearned, ...occasionalMastered, ...randomizedMastered.filter((_, index) => index % 6 !== 0)];
+  const recentWordKeys = new Set(recentVocabularyWords);
+  const freshCards = cardList.filter((card) => !recentWordKeys.has(getVocabularyReviewWordKey(card)));
+  const repeatCards = cardList.filter((card) => recentWordKeys.has(getVocabularyReviewWordKey(card)));
+  return [...sortVocabularyReviewCandidates(freshCards), ...sortVocabularyReviewCandidates(repeatCards)];
 }
 
 function generateVocabularyReviewQuestion(reason, targetIndex = vocabularyReviewCurrentIndex) {
@@ -3343,10 +3333,12 @@ function generateVocabularyReviewQuestion(reason, targetIndex = vocabularyReview
     hasAnswered: false,
     currentChoices: buildVocabularyReviewChoices(card)
   };
+  rememberVocabularyReviewWord(card);
   console.log("Vocabulary Review question generated", {
     currentQuestionId: card.id,
     reason,
-    word: card.word
+    word: card.word,
+    recentVocabularyWords: [...recentVocabularyWords]
   });
 }
 
@@ -3357,6 +3349,8 @@ function renderVocabularyReviewQuiz() {
     vocabularyReviewCurrentIndex = visibleVocabularyReviewCards.findIndex((item) => item.id === card.id);
   }
   els.nounVerbTitle.textContent = "Vocabulary Review";
+  els.vocabularyReviewDebug.classList.remove("hidden");
+  els.vocabularyReviewDebug.textContent = `Vocabulary Review Pool: ${cards.length} words · Recent Buffer: ${RECENT_VOCABULARY_WORD_BUFFER} words`;
   els.nounVerbInstruction.textContent = "Choose the English meaning";
   els.nounVerbStage.classList.toggle("noun-verb-result-visible", vocabularyReviewQuizState.hasAnswered);
   els.showAnswer.classList.add("hidden");
@@ -3482,10 +3476,81 @@ function moveVocabularyReviewCard(direction) {
     return;
   }
   vocabularyReviewCurrentIndex = direction > 0
-    ? (vocabularyReviewCurrentIndex + 1) % visibleVocabularyReviewCards.length
+    ? getNextVocabularyReviewIndex()
     : (vocabularyReviewCurrentIndex - 1 + visibleVocabularyReviewCards.length) % visibleVocabularyReviewCards.length;
   generateVocabularyReviewQuestion(direction > 0 ? "next/skip" : "previous", vocabularyReviewCurrentIndex);
   renderVocabularyReviewQuiz();
+}
+
+function getNextVocabularyReviewIndex() {
+  if (visibleVocabularyReviewCards.length < 2) return vocabularyReviewCurrentIndex;
+  const currentId = vocabularyReviewQuizState.currentQuestionId || visibleVocabularyReviewCards[vocabularyReviewCurrentIndex]?.id || "";
+  const currentWordKey = getVocabularyReviewWordKey(visibleVocabularyReviewCards[vocabularyReviewCurrentIndex]);
+  const recentWordKeys = new Set(recentVocabularyWords);
+  const wrongWaitKeys = new Set(recentVocabularyWords.slice(0, WRONG_VOCABULARY_WAIT_BUFFER));
+  const candidates = visibleVocabularyReviewCards
+    .map((card, index) => ({ card, index }))
+    .filter(({ card }) => card.id !== currentId && getVocabularyReviewWordKey(card) !== currentWordKey);
+
+  const freshCandidates = candidates.filter(({ card }) => !recentWordKeys.has(getVocabularyReviewWordKey(card)));
+  const outsideWrongWaitCandidates = candidates.filter(({ card }) => !wrongWaitKeys.has(getVocabularyReviewWordKey(card)));
+  const selectedIndex = pickVocabularyReviewCandidateIndex(freshCandidates)
+    ?? pickVocabularyReviewCandidateIndex(outsideWrongWaitCandidates)
+    ?? pickVocabularyReviewCandidateIndex(candidates)
+    ?? vocabularyReviewCurrentIndex;
+
+  const selectedCard = visibleVocabularyReviewCards[selectedIndex];
+  console.log("Vocabulary Review item selected", {
+    selectedItemId: selectedCard?.id || "",
+    word: selectedCard?.word || "",
+    recentVocabularyWords: [...recentVocabularyWords],
+    reasonSelected: freshCandidates.some(({ index }) => index === selectedIndex)
+      ? "selected outside recentVocabularyWords"
+      : "recent repeat allowed because no fresh candidate was available"
+  });
+  return selectedIndex;
+}
+
+function pickVocabularyReviewCandidateIndex(candidates) {
+  if (!candidates.length) return null;
+  const ordered = sortVocabularyReviewCandidates(candidates.map(({ card }) => card));
+  const selectedCard = ordered[0];
+  return candidates.find(({ card }) => card.id === selectedCard?.id)?.index ?? null;
+}
+
+function sortVocabularyReviewCandidates(cardList) {
+  const newCards = [];
+  const learned = [];
+  const mastered = [];
+
+  cardList.forEach((card) => {
+    const status = getVocabularyMasteryStatus(card);
+    if (status === "mastered") mastered.push(card);
+    else if (status === "learned") learned.push(card);
+    else newCards.push(card);
+  });
+
+  const randomizedNewCards = shuffleCards(newCards);
+  const randomizedLearned = shuffleCards(learned)
+    .sort((first, second) => getVocabularyProgressEntry(first).correctCount - getVocabularyProgressEntry(second).correctCount);
+  const randomizedMastered = shuffleCards(mastered)
+    .sort((first, second) => getVocabularyLastAnsweredMs(first) - getVocabularyLastAnsweredMs(second));
+
+  const occasionalMastered = randomizedMastered.filter((_, index) => index % 6 === 0);
+  return [...randomizedNewCards, ...randomizedLearned, ...occasionalMastered, ...randomizedMastered.filter((_, index) => index % 6 !== 0)];
+}
+
+function rememberVocabularyReviewWord(card) {
+  const wordKey = getVocabularyReviewWordKey(card);
+  if (!wordKey) return;
+  recentVocabularyWords = [
+    wordKey,
+    ...recentVocabularyWords.filter((key) => key !== wordKey)
+  ].slice(0, RECENT_VOCABULARY_WORD_BUFFER);
+}
+
+function getVocabularyReviewWordKey(card) {
+  return card?.word ? getSortKey(card.word) : "";
 }
 
 function moveNounVerbCard(direction) {
@@ -3570,6 +3635,7 @@ function renderMeaningMatchQuiz() {
     meaningMatchCurrentIndex = visibleMeaningMatchPairs.findIndex((item) => item.id === pair.id);
   }
   els.nounVerbTitle.textContent = "Meaning Match";
+  els.vocabularyReviewDebug.classList.add("hidden");
   els.nounVerbInstruction.textContent = "Choose the better German sentence";
   els.nounVerbStage.classList.toggle("noun-verb-result-visible", meaningMatchQuizState.hasAnswered);
   els.showAnswer.classList.add("hidden");
