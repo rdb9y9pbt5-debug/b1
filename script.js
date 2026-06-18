@@ -419,24 +419,16 @@ const els = {
   recentAchievements: document.querySelector("#recentAchievements"),
   nextAchievements: document.querySelector("#nextAchievements"),
   achievementsGrid: document.querySelector("#achievementsGrid"),
-  challengeArticleNew: document.querySelector("#challengeArticleNew"),
-  challengeArticleLearned: document.querySelector("#challengeArticleLearned"),
-  challengeArticleMastered: document.querySelector("#challengeArticleMastered"),
-  challengeNounVerbNew: document.querySelector("#challengeNounVerbNew"),
-  challengeNounVerbLearned: document.querySelector("#challengeNounVerbLearned"),
-  challengeNounVerbMastered: document.querySelector("#challengeNounVerbMastered"),
-  challengeMeaningMatchNew: document.querySelector("#challengeMeaningMatchNew"),
-  challengeMeaningMatchLearned: document.querySelector("#challengeMeaningMatchLearned"),
-  challengeMeaningMatchMastered: document.querySelector("#challengeMeaningMatchMastered"),
-  challengeMeaningMatchLoaded: document.querySelector("#challengeMeaningMatchLoaded"),
-  challengePrepositionNew: document.querySelector("#challengePrepositionNew"),
-  challengePrepositionLearned: document.querySelector("#challengePrepositionLearned"),
-  challengePrepositionMastered: document.querySelector("#challengePrepositionMastered"),
-  challengePrepositionLoaded: document.querySelector("#challengePrepositionLoaded"),
-  challengeVocabularyReviewNeeded: document.querySelector("#challengeVocabularyReviewNeeded"),
-  challengeVocabularyReviewAnswered: document.querySelector("#challengeVocabularyReviewAnswered"),
-  challengeVocabularyReviewCorrect: document.querySelector("#challengeVocabularyReviewCorrect"),
-  challengeVocabularyReviewIncorrect: document.querySelector("#challengeVocabularyReviewIncorrect"),
+  challengeArticleProgressBar: document.querySelector("#challengeArticleProgressBar"),
+  challengeArticleProgressLabel: document.querySelector("#challengeArticleProgressLabel"),
+  challengeVocabularyProgressBar: document.querySelector("#challengeVocabularyProgressBar"),
+  challengeVocabularyProgressLabel: document.querySelector("#challengeVocabularyProgressLabel"),
+  challengeNounVerbProgressBar: document.querySelector("#challengeNounVerbProgressBar"),
+  challengeNounVerbProgressLabel: document.querySelector("#challengeNounVerbProgressLabel"),
+  challengeMeaningMatchProgressBar: document.querySelector("#challengeMeaningMatchProgressBar"),
+  challengeMeaningMatchProgressLabel: document.querySelector("#challengeMeaningMatchProgressLabel"),
+  challengePrepositionProgressBar: document.querySelector("#challengePrepositionProgressBar"),
+  challengePrepositionProgressLabel: document.querySelector("#challengePrepositionProgressLabel"),
   levelIcon: document.querySelector("#levelIcon"),
   levelName: document.querySelector("#levelName"),
   levelProfileName: document.querySelector("#levelProfileName"),
@@ -1592,26 +1584,46 @@ function renderCoinChallenges() {
   const nounVerbSummary = getNounVerbSummary();
   const meaningMatchSummary = getMeaningMatchSummary();
   const prepositionSummary = getPrepositionSummary();
-  const vocabularyReviewStats = normalizeVocabularyReviewStats(getCurrentProfile().vocabularyReviewStats);
-  const vocabularyReviewCount = getVocabularyReviewCards().length;
-  els.challengeArticleNew.textContent = articleSummary.new;
-  els.challengeArticleLearned.textContent = articleSummary.learned;
-  els.challengeArticleMastered.textContent = articleSummary.mastered;
-  els.challengeNounVerbNew.textContent = nounVerbSummary.new;
-  els.challengeNounVerbLearned.textContent = nounVerbSummary.learned;
-  els.challengeNounVerbMastered.textContent = nounVerbSummary.mastered;
-  els.challengeMeaningMatchNew.textContent = meaningMatchSummary.new;
-  els.challengeMeaningMatchLearned.textContent = meaningMatchSummary.learned;
-  els.challengeMeaningMatchMastered.textContent = meaningMatchSummary.mastered;
-  els.challengeMeaningMatchLoaded.textContent = meaningMatchItems.length;
-  els.challengePrepositionNew.textContent = prepositionSummary.new;
-  els.challengePrepositionLearned.textContent = prepositionSummary.learned;
-  els.challengePrepositionMastered.textContent = prepositionSummary.mastered;
-  els.challengePrepositionLoaded.textContent = prepositionItems.length;
-  els.challengeVocabularyReviewNeeded.textContent = vocabularyReviewCount;
-  els.challengeVocabularyReviewAnswered.textContent = vocabularyReviewStats.answered;
-  els.challengeVocabularyReviewCorrect.textContent = vocabularyReviewStats.correct;
-  els.challengeVocabularyReviewIncorrect.textContent = vocabularyReviewStats.incorrect;
+  const wordSummary = getWordLearningSummary();
+  renderChallengeProgress(els.challengeArticleProgressBar, els.challengeArticleProgressLabel, articleSummary);
+  renderChallengeProgress(els.challengeVocabularyProgressBar, els.challengeVocabularyProgressLabel, wordSummary);
+  renderChallengeProgress(els.challengeMeaningMatchProgressBar, els.challengeMeaningMatchProgressLabel, meaningMatchSummary);
+  renderChallengeProgress(els.challengeNounVerbProgressBar, els.challengeNounVerbProgressLabel, nounVerbSummary);
+  renderChallengeProgress(els.challengePrepositionProgressBar, els.challengePrepositionProgressLabel, prepositionSummary);
+}
+
+function renderChallengeProgress(barEl, labelEl, summary) {
+  if (!barEl || !labelEl) return;
+  const safeSummary = {
+    new: normalizeCounter(summary?.new),
+    learned: normalizeCounter(summary?.learned),
+    mastered: normalizeCounter(summary?.mastered)
+  };
+  const total = safeSummary.new + safeSummary.learned + safeSummary.mastered;
+  const learnedPercent = total ? Math.round((safeSummary.learned / total) * 100) : 0;
+  const masteredPercent = total ? Math.round((safeSummary.mastered / total) * 100) : 0;
+  const newPercent = Math.max(0, 100 - learnedPercent - masteredPercent);
+
+  barEl.replaceChildren(
+    createProgressSegment("progress-new", newPercent, "New"),
+    createProgressSegment("progress-learned", learnedPercent, "Learned"),
+    createProgressSegment("progress-mastered", masteredPercent, "Mastered")
+  );
+  labelEl.textContent = total
+    ? `Learned ${learnedPercent}% · Mastered ${masteredPercent}%`
+    : "No questions loaded yet";
+  barEl.setAttribute(
+    "aria-label",
+    `New ${newPercent}%, learned ${learnedPercent}%, mastered ${masteredPercent}%`
+  );
+}
+
+function createProgressSegment(className, percent, label) {
+  const segment = document.createElement("span");
+  segment.className = className;
+  segment.style.width = `${percent}%`;
+  segment.title = `${label}: ${percent}%`;
+  return segment;
 }
 
 function renderCoinLeaderboard() {

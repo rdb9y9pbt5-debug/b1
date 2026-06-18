@@ -250,10 +250,9 @@
               <span>Reward:</span>
               <strong>🪙 +1 Coin</strong>
             </div>
-            <div class="article-state-counts" aria-label="Article challenge progress">
-              <span>New <strong id="challengeArticleNew">0</strong></span>
-              <span>Learned <strong id="challengeArticleLearned">0</strong></span>
-              <span>Mastered <strong id="challengeArticleMastered">0</strong></span>
+            <div class="challenge-progress" aria-label="Article challenge progress">
+              <div class="stacked-progress" id="challengeArticleProgressBar"></div>
+              <p id="challengeArticleProgressLabel">Learned 0% · Mastered 0%</p>
             </div>
             <button type="button" data-challenge-action="articles">Play</button>
           </article>
@@ -267,11 +266,9 @@
               <span>Reward:</span>
               <strong>🪙 +1 Coin</strong>
             </div>
-            <div class="article-state-counts" aria-label="Vocabulary review stats">
-              <span>Deck words <strong id="challengeVocabularyReviewNeeded">0</strong></span>
-              <span>Answered <strong id="challengeVocabularyReviewAnswered">0</strong></span>
-              <span>Correct <strong id="challengeVocabularyReviewCorrect">0</strong></span>
-              <span>Wrong <strong id="challengeVocabularyReviewIncorrect">0</strong></span>
+            <div class="challenge-progress" aria-label="Vocabulary review progress">
+              <div class="stacked-progress" id="challengeVocabularyProgressBar"></div>
+              <p id="challengeVocabularyProgressLabel">Learned 0% · Mastered 0%</p>
             </div>
             <button type="button" data-challenge-action="vocabulary-review">Play</button>
           </article>
@@ -285,11 +282,9 @@
               <span>Reward:</span>
               <strong>🪙🪙 +2 Coins</strong>
             </div>
-            <div class="article-state-counts" aria-label="Meaning match progress">
-              <span>Curated <strong id="challengeMeaningMatchLoaded">0</strong></span>
-              <span>New <strong id="challengeMeaningMatchNew">0</strong></span>
-              <span>Learned <strong id="challengeMeaningMatchLearned">0</strong></span>
-              <span>Mastered <strong id="challengeMeaningMatchMastered">0</strong></span>
+            <div class="challenge-progress" aria-label="Meaning match progress">
+              <div class="stacked-progress" id="challengeMeaningMatchProgressBar"></div>
+              <p id="challengeMeaningMatchProgressLabel">Learned 0% · Mastered 0%</p>
             </div>
             <button type="button" data-challenge-action="meaning-match">Play</button>
           </article>
@@ -303,10 +298,9 @@
               <span>Reward:</span>
               <strong>🪙🪙 +2 Coins</strong>
             </div>
-            <div class="article-state-counts" aria-label="Noun-verb challenge progress">
-              <span>New <strong id="challengeNounVerbNew">0</strong></span>
-              <span>Learned <strong id="challengeNounVerbLearned">0</strong></span>
-              <span>Mastered <strong id="challengeNounVerbMastered">0</strong></span>
+            <div class="challenge-progress" aria-label="Noun-verb challenge progress">
+              <div class="stacked-progress" id="challengeNounVerbProgressBar"></div>
+              <p id="challengeNounVerbProgressLabel">Learned 0% · Mastered 0%</p>
             </div>
             <button type="button" data-challenge-action="noun-verb">Play</button>
           </article>
@@ -320,11 +314,9 @@
               <span>Reward:</span>
               <strong>🪙🪙 +2 Coins</strong>
             </div>
-            <div class="article-state-counts" aria-label="Preposition challenge progress">
-              <span>Questions <strong id="challengePrepositionLoaded">0</strong></span>
-              <span>New <strong id="challengePrepositionNew">0</strong></span>
-              <span>Learned <strong id="challengePrepositionLearned">0</strong></span>
-              <span>Mastered <strong id="challengePrepositionMastered">0</strong></span>
+            <div class="challenge-progress" aria-label="Preposition challenge progress">
+              <div class="stacked-progress" id="challengePrepositionProgressBar"></div>
+              <p id="challengePrepositionProgressLabel">Learned 0% · Mastered 0%</p>
             </div>
             <button type="button" data-challenge-action="prepositions">Play</button>
           </article>
@@ -550,9 +542,9 @@
           <button class="dont-know" type="button" data-rating="unknown">I don’t know the meaning</button>
         </div>
       </footer>
-      <p class="app-version">SprachQuest v1.17</p>
+      <p class="app-version">SprachQuest v1.18</p>
     </main>
 
-    <script type="module" src="script.js?v=86"></script>
+    <script type="module" src="script.js?v=87"></script>
   </body>
 </html>
