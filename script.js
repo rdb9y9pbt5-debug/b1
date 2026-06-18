@@ -3,8 +3,8 @@ const NOUN_VERB_CSV_URL = "nomen_verb_verbindungen.csv";
 const MEANING_MATCH_CSV_URL = "meaning_match_items.csv";
 const RECENT_VOCABULARY_WORD_BUFFER = 100;
 const WRONG_VOCABULARY_WAIT_BUFFER = 20;
-const MEANING_MATCH_RECENT_BUFFER = 40;
-const WRONG_MEANING_MATCH_WAIT_BUFFER = 15;
+const MEANING_MATCH_RECENT_BUFFER = 60;
+const WRONG_MEANING_MATCH_WAIT_BUFFER = 20;
 const APP_PASSWORD = "b1";
 const UNLOCK_STORAGE_KEY = "goethe-b1-flashcards-unlocked-v1";
 const STORAGE_KEY = "goethe-b1-flashcards-progress-v1";
@@ -792,6 +792,7 @@ function normalizeProfileData(data, profile) {
     articleProgress: normalizeArticleProgress(data?.articleProgress || {}),
     nounVerbProgress: normalizeNounVerbProgress(data?.nounVerbProgress || {}),
     meaningMatchProgress: normalizeNounVerbProgress(data?.meaningMatchProgress || {}),
+    recentMeaningMatchItems: normalizeRecentItemList(data?.recentMeaningMatchItems, MEANING_MATCH_RECENT_BUFFER),
     vocabularyReviewStats: normalizeVocabularyReviewStats(data?.vocabularyReviewStats),
     positions: normalizePositions(data?.positions),
     settings: {
@@ -860,6 +861,19 @@ function normalizeVocabularyMasteryStatus(value, counts = {}) {
   if (status === "mastered" || correctCount >= 3) return "mastered";
   if (status === "learned" || correctCount >= 1) return "learned";
   return "new";
+}
+
+function normalizeRecentItemList(value = [], limit = 60) {
+  if (!Array.isArray(value)) return [];
+  const seen = new Set();
+  return value
+    .map(String)
+    .filter((item) => {
+      if (!item || seen.has(item)) return false;
+      seen.add(item);
+      return true;
+    })
+    .slice(0, limit);
 }
 
 function normalizeArticleProgress(savedProgress) {
@@ -1084,6 +1098,7 @@ function applyRemoteProfileStore(remoteStore) {
     articleProgress = profileStore.profiles[currentProfileId].articleProgress;
     nounVerbProgress = profileStore.profiles[currentProfileId].nounVerbProgress;
     meaningMatchProgress = profileStore.profiles[currentProfileId].meaningMatchProgress;
+    recentMeaningMatchItems = normalizeRecentItemList(profileStore.profiles[currentProfileId].recentMeaningMatchItems, MEANING_MATCH_RECENT_BUFFER);
   }
   applyingRemoteStore = false;
   promoteFamilyAchievements(profileStore);
@@ -1137,6 +1152,7 @@ function mergeProfileData(localProfile, remoteProfile, defaultProfile) {
       articleProgress: mergeProgressEntries(local.articleProgress, remote.articleProgress),
       nounVerbProgress: mergeProgressEntries(local.nounVerbProgress, remote.nounVerbProgress),
       meaningMatchProgress: mergeProgressEntries(local.meaningMatchProgress, remote.meaningMatchProgress),
+      recentMeaningMatchItems: mergeRecentItemLists(local.recentMeaningMatchItems, remote.recentMeaningMatchItems, MEANING_MATCH_RECENT_BUFFER),
       vocabularyReviewStats: mergeVocabularyReviewStats(local.vocabularyReviewStats, remote.vocabularyReviewStats),
       positions: {
         vocabulary: Math.max(normalizePosition(local.positions?.vocabulary), normalizePosition(remote.positions?.vocabulary)),
@@ -1162,6 +1178,10 @@ function mergeProgressEntries(localEntries = {}, remoteEntries = {}) {
       : remoteEntry;
   });
   return merged;
+}
+
+function mergeRecentItemLists(localItems = [], remoteItems = [], limit = 60) {
+  return normalizeRecentItemList([...(localItems || []), ...(remoteItems || [])], limit);
 }
 
 function mergeHistory(localHistory = [], remoteHistory = []) {
@@ -1241,6 +1261,7 @@ function showProfileScreen() {
   articleProgress = {};
   nounVerbProgress = {};
   meaningMatchProgress = {};
+  recentMeaningMatchItems = [];
   els.appShell.classList.remove("clean-article-practice");
   els.appShell.classList.remove("clean-quiz-mode");
   els.appShell.classList.remove("meaning-match-mode");
@@ -1259,6 +1280,7 @@ function selectProfile(profileId) {
   articleProgress = profile.articleProgress;
   nounVerbProgress = profile.nounVerbProgress;
   meaningMatchProgress = profile.meaningMatchProgress;
+  recentMeaningMatchItems = normalizeRecentItemList(profile.recentMeaningMatchItems, MEANING_MATCH_RECENT_BUFFER);
   applyProfileSettings(profile.settings);
   saveProfileStore();
   els.currentProfileLabel.textContent = `${profile.emoji} ${profile.name}`;
@@ -3638,7 +3660,7 @@ function renderMeaningMatchQuiz() {
   }
   els.nounVerbTitle.textContent = "Meaning Match";
   els.vocabularyReviewDebug.classList.remove("hidden");
-  els.vocabularyReviewDebug.textContent = `Meaning Match Pool: ${meaningMatchItems.filter(isMeaningMatchEligiblePair).length} curated items · Recent Buffer: ${MEANING_MATCH_RECENT_BUFFER}`;
+  els.vocabularyReviewDebug.textContent = `Meaning Match Pool: ${meaningMatchItems.filter(isMeaningMatchEligiblePair).length} · Recent History: ${recentMeaningMatchItems.length} / ${MEANING_MATCH_RECENT_BUFFER}`;
   els.nounVerbInstruction.textContent = "Choose the better German sentence";
   els.nounVerbStage.classList.toggle("noun-verb-result-visible", meaningMatchQuizState.hasAnswered);
   els.showAnswer.classList.add("hidden");
@@ -4085,7 +4107,7 @@ function getNextMeaningMatchIndex() {
   const outsideWrongWaitCandidates = candidates.filter(({ pair }) => !wrongWaitItems.has(pair.id));
 
   const selectedIndex = pickMeaningMatchCandidateIndex(freshCandidates)
-    ?? pickMeaningMatchCandidateIndex(outsideWrongWaitCandidates)
+    ?? pickMeaningMatchCandidateIndex(outsideWrongWaitCandidates, { preferOldestRecent: true })
     ?? pickMeaningMatchCandidateIndex(candidates)
     ?? meaningMatchCurrentIndex;
   const selectedPair = visibleMeaningMatchPairs[selectedIndex];
@@ -4100,8 +4122,13 @@ function getNextMeaningMatchIndex() {
   return selectedIndex;
 }
 
-function pickMeaningMatchCandidateIndex(candidates) {
+function pickMeaningMatchCandidateIndex(candidates, options = {}) {
   if (!candidates.length) return null;
+  if (options.preferOldestRecent) {
+    const oldestAge = Math.max(...candidates.map(({ pair }) => getMeaningMatchRecentAge(pair.id)));
+    const oldestCandidates = candidates.filter(({ pair }) => getMeaningMatchRecentAge(pair.id) === oldestAge);
+    return pickMeaningMatchCandidateIndex(oldestCandidates);
+  }
   const bestRank = Math.min(...candidates.map(({ pair }) => getMeaningMatchPriorityRank(pair)));
   const bestCandidates = candidates.filter(({ pair }) => getMeaningMatchPriorityRank(pair) === bestRank);
   const weightedCandidates = shuffleCards(bestCandidates)
@@ -4121,6 +4148,7 @@ function rememberMeaningMatchQuestion(pairOrId) {
     pairId,
     ...recentMeaningMatchItems.filter((id) => id !== pairId)
   ].slice(0, MEANING_MATCH_RECENT_BUFFER);
+  saveMeaningMatchRecentItems();
 }
 
 function getNextNounVerbIndex() {
@@ -4220,11 +4248,10 @@ function getNounVerbPriorityRank(pair) {
 }
 
 function getMeaningMatchPriorityRank(pair) {
-  if (isMeaningMatchWrongRecently(pair)) return 0;
   const status = getMeaningMatchStatus(pair);
-  if (status === "new") return 1;
-  if (status === "learned") return 2;
-  return 3;
+  if (status === "new") return 0;
+  if (status === "learned") return 1;
+  return 2;
 }
 
 function applyMeaningMatchPriorityOrder(pairList) {
@@ -4239,24 +4266,21 @@ function applyMeaningMatchPriorityOrder(pairList) {
 }
 
 function sortMeaningMatchCandidates(pairList) {
-  const wrongRecent = [];
   const newPairs = [];
   const learned = [];
   const mastered = [];
 
   pairList.forEach((pair) => {
     const status = getMeaningMatchStatus(pair);
-    if (isMeaningMatchWrongRecently(pair)) wrongRecent.push(pair);
-    else if (status === "new") newPairs.push(pair);
+    if (status === "new") newPairs.push(pair);
     else if (status === "learned") learned.push(pair);
     else mastered.push(pair);
   });
 
-  wrongRecent.sort((first, second) => getMeaningMatchLastWrongMs(second) - getMeaningMatchLastWrongMs(first));
   const randomizedNewPairs = shuffleCards(newPairs);
   const randomizedLearned = shuffleCards(learned).sort((first, second) => getMeaningMatchProgressEntry(first).correctCount - getMeaningMatchProgressEntry(second).correctCount);
   const randomizedMastered = shuffleCards(mastered).sort((first, second) => getMeaningMatchLastAnsweredMs(first) - getMeaningMatchLastAnsweredMs(second));
-  const mainReview = [...wrongRecent, ...randomizedNewPairs, ...randomizedLearned];
+  const mainReview = [...randomizedNewPairs, ...randomizedLearned];
   if (!mainReview.length) return randomizedMastered;
   return [...mainReview, ...randomizedMastered.filter((_, index) => index % 6 === 0)];
 }
@@ -4610,6 +4634,12 @@ function loadMeaningMatchProgress() {
 function saveMeaningMatchProgress() {
   if (!currentProfileId) return;
   getCurrentProfile().meaningMatchProgress = meaningMatchProgress;
+  saveProfileStore();
+}
+
+function saveMeaningMatchRecentItems() {
+  if (!currentProfileId) return;
+  getCurrentProfile().recentMeaningMatchItems = normalizeRecentItemList(recentMeaningMatchItems, MEANING_MATCH_RECENT_BUFFER);
   saveProfileStore();
 }
 
