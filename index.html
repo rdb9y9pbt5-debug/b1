@@ -8,7 +8,7 @@
     <meta name="apple-mobile-web-app-title" content="SprachQuest">
     <meta name="apple-mobile-web-app-status-bar-style" content="default">
     <title>SprachQuest</title>
-    <link rel="stylesheet" href="style.css?v=83">
+    <link rel="stylesheet" href="style.css?v=84">
   </head>
   <body>
     <section class="lock-screen" id="lockScreen" aria-label="Password required">
@@ -183,6 +183,14 @@
               <span>Mastered <strong id="dashboardNounVerbMastered">0</strong></span>
             </div>
           </article>
+          <article class="dashboard-card prepositions">
+            <span>🎯 Prepositions</span>
+            <div class="article-state-counts" aria-label="Preposition learning progress">
+              <span>New <strong id="dashboardPrepositionNew">0</strong></span>
+              <span>Learned <strong id="dashboardPrepositionLearned">0</strong></span>
+              <span>Mastered <strong id="dashboardPrepositionMastered">0</strong></span>
+            </div>
+          </article>
         </div>
 
         <section class="achievements-card" aria-label="Achievements">
@@ -301,6 +309,24 @@
               <span>Mastered <strong id="challengeNounVerbMastered">0</strong></span>
             </div>
             <button type="button" data-challenge-action="noun-verb">Play</button>
+          </article>
+
+          <article class="coin-challenge-card">
+            <div>
+              <h3>🎯 Preposition Master</h3>
+              <p>Practice common German prepositions.</p>
+            </div>
+            <div class="challenge-reward">
+              <span>Reward:</span>
+              <strong>🪙🪙 +2 Coins</strong>
+            </div>
+            <div class="article-state-counts" aria-label="Preposition challenge progress">
+              <span>Questions <strong id="challengePrepositionLoaded">0</strong></span>
+              <span>New <strong id="challengePrepositionNew">0</strong></span>
+              <span>Learned <strong id="challengePrepositionLearned">0</strong></span>
+              <span>Mastered <strong id="challengePrepositionMastered">0</strong></span>
+            </div>
+            <button type="button" data-challenge-action="prepositions">Play</button>
           </article>
         </div>
       </section>
@@ -524,9 +550,9 @@
           <button class="dont-know" type="button" data-rating="unknown">I don’t know the meaning</button>
         </div>
       </footer>
-      <p class="app-version">SprachQuest v1.13</p>
+      <p class="app-version">SprachQuest v1.14</p>
     </main>
 
-    <script type="module" src="script.js?v=83"></script>
+    <script type="module" src="script.js?v=84"></script>
   </body>
 </html>

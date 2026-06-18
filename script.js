@@ -1,6 +1,7 @@
 const CSV_URL = "vocabulary.csv";
 const NOUN_VERB_CSV_URL = "nomen_verb_verbindungen.csv";
 const MEANING_MATCH_CSV_URL = "meaning_match_items.csv";
+const PREPOSITIONS_CSV_URL = "prepositions.csv";
 const RECENT_VOCABULARY_WORD_BUFFER = 100;
 const WRONG_VOCABULARY_WAIT_BUFFER = 20;
 const MEANING_MATCH_RECENT_BUFFER = 60;
@@ -412,6 +413,9 @@ const els = {
   dashboardNounVerbNew: document.querySelector("#dashboardNounVerbNew"),
   dashboardNounVerbLearned: document.querySelector("#dashboardNounVerbLearned"),
   dashboardNounVerbMastered: document.querySelector("#dashboardNounVerbMastered"),
+  dashboardPrepositionNew: document.querySelector("#dashboardPrepositionNew"),
+  dashboardPrepositionLearned: document.querySelector("#dashboardPrepositionLearned"),
+  dashboardPrepositionMastered: document.querySelector("#dashboardPrepositionMastered"),
   recentAchievements: document.querySelector("#recentAchievements"),
   nextAchievements: document.querySelector("#nextAchievements"),
   achievementsGrid: document.querySelector("#achievementsGrid"),
@@ -425,6 +429,10 @@ const els = {
   challengeMeaningMatchLearned: document.querySelector("#challengeMeaningMatchLearned"),
   challengeMeaningMatchMastered: document.querySelector("#challengeMeaningMatchMastered"),
   challengeMeaningMatchLoaded: document.querySelector("#challengeMeaningMatchLoaded"),
+  challengePrepositionNew: document.querySelector("#challengePrepositionNew"),
+  challengePrepositionLearned: document.querySelector("#challengePrepositionLearned"),
+  challengePrepositionMastered: document.querySelector("#challengePrepositionMastered"),
+  challengePrepositionLoaded: document.querySelector("#challengePrepositionLoaded"),
   challengeVocabularyReviewNeeded: document.querySelector("#challengeVocabularyReviewNeeded"),
   challengeVocabularyReviewAnswered: document.querySelector("#challengeVocabularyReviewAnswered"),
   challengeVocabularyReviewCorrect: document.querySelector("#challengeVocabularyReviewCorrect"),
@@ -529,12 +537,15 @@ let cards = [];
 let visibleCards = [];
 let nounVerbPairs = [];
 let meaningMatchItems = [];
+let prepositionItems = [];
 let visibleNounVerbPairs = [];
 let visibleMeaningMatchPairs = [];
+let visiblePrepositionItems = [];
 let visibleVocabularyReviewCards = [];
 let currentIndex = 0;
 let nounVerbCurrentIndex = 0;
 let meaningMatchCurrentIndex = 0;
+let prepositionCurrentIndex = 0;
 let vocabularyReviewCurrentIndex = 0;
 let answerShown = false;
 let selectedArticle = "";
@@ -554,6 +565,12 @@ let meaningMatchQuizState = {
   currentTemplateId: "",
   currentChoices: []
 };
+let prepositionQuizState = {
+  currentQuestionId: "",
+  selectedAnswer: "",
+  hasAnswered: false,
+  currentChoices: []
+};
 let vocabularyReviewQuizState = {
   currentQuestionId: "",
   selectedAnswer: "",
@@ -571,6 +588,7 @@ let vocabularyProgress = {};
 let articleProgress = {};
 let nounVerbProgress = {};
 let meaningMatchProgress = {};
+let prepositionProgress = {};
 let profileStore = null;
 let checkingAchievements = false;
 let currentProfileId = "";
@@ -626,6 +644,15 @@ async function unlockApp() {
   } catch (error) {
     console.warn("Could not load curated Meaning Match items.", error);
     meaningMatchItems = [];
+  }
+  try {
+    const response = await fetch(PREPOSITIONS_CSV_URL, { cache: "no-store" });
+    if (!response.ok) throw new Error("Prepositions file was not found.");
+    const csv = await response.text();
+    prepositionItems = normalizePrepositionItems(parseCsv(csv));
+  } catch (error) {
+    console.warn("Could not load preposition questions.", error);
+    prepositionItems = [];
   }
   if (profileStore.currentProfile) {
     selectProfile(profileStore.currentProfile);
@@ -792,6 +819,7 @@ function normalizeProfileData(data, profile) {
     articleProgress: normalizeArticleProgress(data?.articleProgress || {}),
     nounVerbProgress: normalizeNounVerbProgress(data?.nounVerbProgress || {}),
     meaningMatchProgress: normalizeNounVerbProgress(data?.meaningMatchProgress || {}),
+    prepositionProgress: normalizeNounVerbProgress(data?.prepositionProgress || {}),
     recentMeaningMatchItems: normalizeRecentItemList(data?.recentMeaningMatchItems, MEANING_MATCH_RECENT_BUFFER),
     vocabularyReviewStats: normalizeVocabularyReviewStats(data?.vocabularyReviewStats),
     positions: normalizePositions(data?.positions),
@@ -1098,6 +1126,7 @@ function applyRemoteProfileStore(remoteStore) {
     articleProgress = profileStore.profiles[currentProfileId].articleProgress;
     nounVerbProgress = profileStore.profiles[currentProfileId].nounVerbProgress;
     meaningMatchProgress = profileStore.profiles[currentProfileId].meaningMatchProgress;
+    prepositionProgress = profileStore.profiles[currentProfileId].prepositionProgress;
     recentMeaningMatchItems = normalizeRecentItemList(profileStore.profiles[currentProfileId].recentMeaningMatchItems, MEANING_MATCH_RECENT_BUFFER);
   }
   applyingRemoteStore = false;
@@ -1152,6 +1181,7 @@ function mergeProfileData(localProfile, remoteProfile, defaultProfile) {
       articleProgress: mergeProgressEntries(local.articleProgress, remote.articleProgress),
       nounVerbProgress: mergeProgressEntries(local.nounVerbProgress, remote.nounVerbProgress),
       meaningMatchProgress: mergeProgressEntries(local.meaningMatchProgress, remote.meaningMatchProgress),
+      prepositionProgress: mergeProgressEntries(local.prepositionProgress, remote.prepositionProgress),
       recentMeaningMatchItems: mergeRecentItemLists(local.recentMeaningMatchItems, remote.recentMeaningMatchItems, MEANING_MATCH_RECENT_BUFFER),
       vocabularyReviewStats: mergeVocabularyReviewStats(local.vocabularyReviewStats, remote.vocabularyReviewStats),
       positions: {
@@ -1246,6 +1276,8 @@ function refreshVisibleProfileState() {
     renderNounVerbQuiz();
   } else if (currentView === "meaning-match") {
     renderMeaningMatchQuiz();
+  } else if (currentView === "prepositions") {
+    renderPrepositionQuiz();
   } else if (currentView === "vocabulary-review") {
     renderVocabularyReviewQuiz();
   } else {
@@ -1261,6 +1293,7 @@ function showProfileScreen() {
   articleProgress = {};
   nounVerbProgress = {};
   meaningMatchProgress = {};
+  prepositionProgress = {};
   recentMeaningMatchItems = [];
   els.appShell.classList.remove("clean-article-practice");
   els.appShell.classList.remove("clean-quiz-mode");
@@ -1280,6 +1313,7 @@ function selectProfile(profileId) {
   articleProgress = profile.articleProgress;
   nounVerbProgress = profile.nounVerbProgress;
   meaningMatchProgress = profile.meaningMatchProgress;
+  prepositionProgress = profile.prepositionProgress;
   recentMeaningMatchItems = normalizeRecentItemList(profile.recentMeaningMatchItems, MEANING_MATCH_RECENT_BUFFER);
   applyProfileSettings(profile.settings);
   saveProfileStore();
@@ -1457,6 +1491,26 @@ function showMeaningMatchQuiz() {
   renderMeaningMatchQuiz();
 }
 
+function showPrepositionQuiz() {
+  currentView = "prepositions";
+  setChallengeBackButtons(false, true);
+  els.appShell.classList.remove("clean-article-practice");
+  els.appShell.classList.add("clean-quiz-mode");
+  els.appShell.classList.remove("meaning-match-mode");
+  els.dashboardScreen.classList.add("hidden");
+  els.achievementCollectionScreen.classList.add("hidden");
+  els.coinChallengesScreen.classList.add("hidden");
+  els.controlPanel.classList.add("hidden");
+  els.searchPanel.classList.add("hidden");
+  els.statsGrid.classList.add("hidden");
+  els.studyStage.classList.add("hidden");
+  els.actionBar.classList.remove("hidden");
+  els.nounVerbStage.classList.remove("hidden");
+  applyPrepositionOrder();
+  generatePrepositionQuestion("open quiz", prepositionCurrentIndex);
+  renderPrepositionQuiz();
+}
+
 function setChallengeBackButtons(showStudyButton, showNounVerbButton) {
   els.studyChallengeBack.classList.toggle("hidden", !showStudyButton);
   els.nounVerbChallengeBack.classList.toggle("hidden", !showNounVerbButton);
@@ -1477,6 +1531,7 @@ function renderDashboard() {
   const wordSummary = getWordLearningSummary();
   const articleSummary = getArticleSummary();
   const nounVerbSummary = getNounVerbSummary();
+  const prepositionSummary = getPrepositionSummary();
   const level = getCoinLevel(profile.coins);
   const levelPercent = getLevelProgressPercent(profile.coins, level);
   const familySummary = getFamilyWealthSummary();
@@ -1493,6 +1548,9 @@ function renderDashboard() {
   els.dashboardNounVerbNew.textContent = nounVerbSummary.new;
   els.dashboardNounVerbLearned.textContent = nounVerbSummary.learned;
   els.dashboardNounVerbMastered.textContent = nounVerbSummary.mastered;
+  els.dashboardPrepositionNew.textContent = prepositionSummary.new;
+  els.dashboardPrepositionLearned.textContent = prepositionSummary.learned;
+  els.dashboardPrepositionMastered.textContent = prepositionSummary.mastered;
   els.levelIcon.textContent = level.icon;
   els.levelName.textContent = level.name;
   els.levelProfileName.textContent = `${profile.name}'s`;
@@ -1533,6 +1591,7 @@ function renderCoinChallenges() {
   const articleSummary = getArticleSummary();
   const nounVerbSummary = getNounVerbSummary();
   const meaningMatchSummary = getMeaningMatchSummary();
+  const prepositionSummary = getPrepositionSummary();
   const vocabularyReviewStats = normalizeVocabularyReviewStats(getCurrentProfile().vocabularyReviewStats);
   const vocabularyReviewCount = getVocabularyReviewCards().length;
   els.challengeArticleNew.textContent = articleSummary.new;
@@ -1545,6 +1604,10 @@ function renderCoinChallenges() {
   els.challengeMeaningMatchLearned.textContent = meaningMatchSummary.learned;
   els.challengeMeaningMatchMastered.textContent = meaningMatchSummary.mastered;
   els.challengeMeaningMatchLoaded.textContent = meaningMatchItems.length;
+  els.challengePrepositionNew.textContent = prepositionSummary.new;
+  els.challengePrepositionLearned.textContent = prepositionSummary.learned;
+  els.challengePrepositionMastered.textContent = prepositionSummary.mastered;
+  els.challengePrepositionLoaded.textContent = prepositionItems.length;
   els.challengeVocabularyReviewNeeded.textContent = vocabularyReviewCount;
   els.challengeVocabularyReviewAnswered.textContent = vocabularyReviewStats.answered;
   els.challengeVocabularyReviewCorrect.textContent = vocabularyReviewStats.correct;
@@ -1921,6 +1984,10 @@ function handleChallengeAction(action) {
     showMeaningMatchQuiz();
     return;
   }
+  if (action === "prepositions") {
+    showPrepositionQuiz();
+    return;
+  }
   if (action === "vocabulary-review") {
     showVocabularyReviewQuiz();
     return;
@@ -2172,6 +2239,10 @@ function bindEvents() {
       moveMeaningMatchCard(-1);
       return;
     }
+    if (currentView === "prepositions") {
+      movePrepositionCard(-1);
+      return;
+    }
     if (currentView === "vocabulary-review") {
       moveVocabularyReviewCard(-1);
       return;
@@ -2185,6 +2256,10 @@ function bindEvents() {
     }
     if (currentView === "meaning-match") {
       moveMeaningMatchCard(1);
+      return;
+    }
+    if (currentView === "prepositions") {
+      movePrepositionCard(1);
       return;
     }
     if (currentView === "vocabulary-review") {
@@ -2235,6 +2310,12 @@ function bindEvents() {
       answerMeaningMatchQuiz(Number(meaningMatchButton.dataset.meaningChoice));
       return;
     }
+    if (currentView === "prepositions") {
+      const prepositionButton = event.target.closest("button[data-preposition-choice]");
+      if (!prepositionButton || prepositionQuizState.hasAnswered) return;
+      answerPrepositionQuiz(prepositionButton.dataset.prepositionChoice);
+      return;
+    }
     if (!button || nounVerbQuizState.hasAnswered) return;
     answerNounVerbQuiz(button.dataset.verb);
   });
@@ -2246,6 +2327,10 @@ function bindEvents() {
     }
     if (currentView === "vocabulary-review") {
       moveVocabularyReviewCard(1);
+      return;
+    }
+    if (currentView === "prepositions") {
+      movePrepositionCard(1);
       return;
     }
     moveNounVerbCard(1);
@@ -2445,6 +2530,25 @@ function isMeaningMatchCuratedItemValid(item) {
   if (!item.englishSentence || !item.correctGermanSentence || !item.wrongGermanSentence) return false;
   if (item.correctGermanSentence === item.wrongGermanSentence) return false;
   return true;
+}
+
+function normalizePrepositionItems(rows) {
+  const seen = new Set();
+  return rows
+    .filter((row) => row.id && row.sentence && row.correct && row.wrong1 && row.wrong2 && row.wrong3)
+    .map((row, index) => ({
+      id: slugify(row.id) || `preposition-${index}`,
+      sentence: row.sentence.trim(),
+      correct: row.correct.trim(),
+      wrong1: row.wrong1.trim(),
+      wrong2: row.wrong2.trim(),
+      wrong3: row.wrong3.trim()
+    }))
+    .filter((item) => {
+      if (seen.has(item.id)) return false;
+      seen.add(item.id);
+      return true;
+    });
 }
 
 function applyModeAndFilter() {
@@ -4086,6 +4190,170 @@ function moveMeaningMatchCard(direction) {
   renderMeaningMatchQuiz();
 }
 
+function resetPrepositionQuizState() {
+  prepositionQuizState = {
+    currentQuestionId: "",
+    selectedAnswer: "",
+    hasAnswered: false,
+    currentChoices: []
+  };
+}
+
+function getCurrentPrepositionItem() {
+  if (!prepositionQuizState.currentQuestionId) return null;
+  return visiblePrepositionItems.find((item) => item.id === prepositionQuizState.currentQuestionId) || null;
+}
+
+function applyPrepositionOrder() {
+  const currentQuestionId = prepositionQuizState.currentQuestionId;
+  visiblePrepositionItems = applyPrepositionPriorityOrder(prepositionItems);
+  const currentQuestionIndex = visiblePrepositionItems.findIndex((item) => item.id === currentQuestionId);
+  prepositionCurrentIndex = currentQuestionIndex >= 0
+    ? currentQuestionIndex
+    : clamp(prepositionCurrentIndex, 0, Math.max(visiblePrepositionItems.length - 1, 0));
+}
+
+function applyPrepositionPriorityOrder(itemList) {
+  const newItems = [];
+  const learned = [];
+  const mastered = [];
+
+  itemList.forEach((item) => {
+    const status = getPrepositionStatus(item);
+    if (status === "mastered") mastered.push(item);
+    else if (status === "learned") learned.push(item);
+    else newItems.push(item);
+  });
+
+  const randomizedNewItems = shuffleCards(newItems);
+  const randomizedLearned = shuffleCards(learned)
+    .sort((first, second) => getPrepositionProgressEntry(first).correctCount - getPrepositionProgressEntry(second).correctCount);
+  const randomizedMastered = shuffleCards(mastered)
+    .sort((first, second) => getPrepositionLastAnsweredMs(first) - getPrepositionLastAnsweredMs(second));
+  const occasionalMastered = randomizedMastered.filter((_, index) => index % 6 === 0);
+  return [...randomizedNewItems, ...randomizedLearned, ...occasionalMastered, ...randomizedMastered.filter((_, index) => index % 6 !== 0)];
+}
+
+function generatePrepositionQuestion(reason, targetIndex = prepositionCurrentIndex) {
+  if (!visiblePrepositionItems.length) {
+    resetPrepositionQuizState();
+    console.log("Preposition question generated", {
+      currentQuestionId: "",
+      reason,
+      availableQuestions: 0
+    });
+    return;
+  }
+
+  prepositionCurrentIndex = clamp(targetIndex, 0, visiblePrepositionItems.length - 1);
+  const item = visiblePrepositionItems[prepositionCurrentIndex];
+  prepositionQuizState = {
+    currentQuestionId: item.id,
+    selectedAnswer: "",
+    hasAnswered: false,
+    currentChoices: shuffleCards([item.correct, item.wrong1, item.wrong2, item.wrong3])
+  };
+  console.log("Preposition question generated", {
+    currentQuestionId: item.id,
+    reason,
+    sentence: item.sentence
+  });
+}
+
+function renderPrepositionQuiz() {
+  const item = getCurrentPrepositionItem();
+  const hasItem = Boolean(item);
+  if (hasItem) {
+    prepositionCurrentIndex = visiblePrepositionItems.findIndex((entry) => entry.id === item.id);
+  }
+  els.nounVerbTitle.textContent = "Preposition Master";
+  els.vocabularyReviewDebug.classList.add("hidden");
+  els.nounVerbInstruction.textContent = "Choose the preposition";
+  els.nounVerbStage.classList.toggle("noun-verb-result-visible", prepositionQuizState.hasAnswered);
+  els.showAnswer.classList.add("hidden");
+  els.ratingButtons.classList.add("hidden");
+  els.previousCard.disabled = visiblePrepositionItems.length < 2;
+  els.nextCard.disabled = visiblePrepositionItems.length < 2;
+  els.nounVerbEmptyState.classList.toggle("hidden", hasItem);
+  els.nounVerbPrompt.classList.toggle("hidden", !hasItem);
+  els.nounVerbOptions.classList.toggle("hidden", !hasItem);
+  els.nounVerbResult.classList.add("hidden");
+  els.nounVerbNext.classList.add("hidden");
+  els.nounVerbEmptyState.querySelector("h2").textContent = "No preposition questions";
+  els.nounVerbEmptyState.querySelector("p").textContent = "Make sure prepositions.csv is uploaded.";
+  els.nounVerbCounter.textContent = hasItem
+    ? `Card ${prepositionCurrentIndex + 1} of ${visiblePrepositionItems.length}`
+    : "0 / 0";
+  if (!item) {
+    els.nounVerbPrompt.textContent = "No preposition questions";
+    els.nounVerbOptions.replaceChildren();
+    return;
+  }
+
+  els.nounVerbPrompt.textContent = item.sentence;
+  els.nounVerbOptions.replaceChildren(
+    ...prepositionQuizState.currentChoices.map((choice, index) => {
+      const button = document.createElement("button");
+      button.type = "button";
+      button.dataset.prepositionChoice = choice;
+      button.textContent = `${String.fromCharCode(65 + index)}) ${choice}`;
+      button.disabled = prepositionQuizState.hasAnswered;
+      button.classList.toggle("correct", prepositionQuizState.hasAnswered && choice === item.correct);
+      button.classList.toggle(
+        "incorrect",
+        prepositionQuizState.hasAnswered && choice === prepositionQuizState.selectedAnswer && choice !== item.correct
+      );
+      return button;
+    })
+  );
+
+  if (prepositionQuizState.hasAnswered) renderPrepositionResult(item);
+}
+
+function answerPrepositionQuiz(selectedAnswer) {
+  const item = getCurrentPrepositionItem();
+  if (!item || prepositionQuizState.hasAnswered) return;
+  const isCorrect = selectedAnswer === item.correct;
+  prepositionQuizState.selectedAnswer = selectedAnswer;
+  prepositionQuizState.hasAnswered = true;
+  updatePrepositionLearningProgress(item, isCorrect);
+  if (isCorrect) awardCoins(2);
+  recordStudyHistory("prepositions", item, isCorrect ? "correct" : "wrong");
+  savePrepositionProgress();
+  renderPrepositionQuiz();
+  renderCoinChallenges();
+}
+
+function renderPrepositionResult(item) {
+  const isCorrect = prepositionQuizState.selectedAnswer === item.correct;
+  const fullSentence = item.sentence.replace("_____", item.correct);
+  els.nounVerbResult.classList.remove("hidden", "success", "error");
+  els.nounVerbResult.classList.add(isCorrect ? "success" : "error");
+  els.nounVerbResult.innerHTML = `
+    <span class="quiz-result-label">${isCorrect ? "✅ Correct" : "❌ Wrong"}</span>
+    ${isCorrect ? "" : "<span class=\"quiz-result-correction\">Correct answer:</span>"}
+    <span class="quiz-result-answer">${escapeHtml(fullSentence)}</span>
+    ${isCorrect ? "<span class=\"quiz-result-reward\"><strong>Reward:</strong> 🪙🪙 +2 Coins</span>" : ""}
+  `;
+  els.nounVerbOptions.querySelectorAll("button").forEach((button) => {
+    const answer = button.dataset.prepositionChoice;
+    button.disabled = true;
+    button.classList.toggle("correct", answer === item.correct);
+    button.classList.toggle("incorrect", answer === prepositionQuizState.selectedAnswer && answer !== item.correct);
+  });
+  els.nounVerbNext.classList.add("hidden");
+}
+
+function movePrepositionCard(direction) {
+  if (!visiblePrepositionItems.length) return;
+  if (direction > 0) applyPrepositionOrder();
+  prepositionCurrentIndex = direction > 0
+    ? (prepositionCurrentIndex + 1) % visiblePrepositionItems.length
+    : (prepositionCurrentIndex - 1 + visiblePrepositionItems.length) % visiblePrepositionItems.length;
+  generatePrepositionQuestion(direction > 0 ? "next/skip" : "previous", prepositionCurrentIndex);
+  renderPrepositionQuiz();
+}
+
 function applyMeaningMatchSmartOrder() {
   const currentQuestionId = meaningMatchQuizState.currentQuestionId;
   visibleMeaningMatchPairs = applyMeaningMatchPriorityOrder(meaningMatchItems);
@@ -4354,6 +4622,63 @@ function getNounVerbSummary() {
   return nounVerbPairs.reduce(
     (total, pair) => {
       total[getNounVerbStatus(pair)] += 1;
+      return total;
+    },
+    { new: 0, learned: 0, mastered: 0 }
+  );
+}
+
+function updatePrepositionLearningProgress(item, isCorrect) {
+  const previous = getPrepositionProgressEntry(item);
+  const now = new Date().toISOString();
+  const correctCount = previous.correctCount + (isCorrect ? 1 : 0);
+  const wrongCount = previous.wrongCount + (isCorrect ? 0 : 1);
+  const status = isCorrect
+    ? correctCount >= 3 ? "mastered" : "learned"
+    : previous.status;
+
+  prepositionProgress[item.id] = {
+    ...previous,
+    correctCount,
+    wrongCount,
+    lastAnsweredAt: now,
+    lastWrongAt: isCorrect ? previous.lastWrongAt || "" : now,
+    status,
+    updatedAt: now
+  };
+}
+
+function getPrepositionProgressEntry(item) {
+  const entry = prepositionProgress[item.id] || {};
+  const correctCount = normalizeCounter(entry.correctCount);
+  const wrongCount = normalizeCounter(entry.wrongCount);
+  return {
+    ...entry,
+    correctCount,
+    wrongCount,
+    lastAnsweredAt: typeof entry.lastAnsweredAt === "string"
+      ? entry.lastAnsweredAt
+      : typeof entry.updatedAt === "string" ? entry.updatedAt : "",
+    lastWrongAt: typeof entry.lastWrongAt === "string"
+      ? entry.lastWrongAt
+      : wrongCount > 0 && typeof entry.updatedAt === "string" ? entry.updatedAt : "",
+    status: normalizeNounVerbStatus(entry.status, { correctCount })
+  };
+}
+
+function getPrepositionStatus(item) {
+  return getPrepositionProgressEntry(item).status;
+}
+
+function getPrepositionLastAnsweredMs(item) {
+  const lastAnswered = Date.parse(getPrepositionProgressEntry(item).lastAnsweredAt);
+  return Number.isFinite(lastAnswered) ? lastAnswered : 0;
+}
+
+function getPrepositionSummary() {
+  return prepositionItems.reduce(
+    (total, item) => {
+      total[getPrepositionStatus(item)] += 1;
       return total;
     },
     { new: 0, learned: 0, mastered: 0 }
@@ -4634,6 +4959,12 @@ function loadMeaningMatchProgress() {
 function saveMeaningMatchProgress() {
   if (!currentProfileId) return;
   getCurrentProfile().meaningMatchProgress = meaningMatchProgress;
+  saveProfileStore();
+}
+
+function savePrepositionProgress() {
+  if (!currentProfileId) return;
+  getCurrentProfile().prepositionProgress = prepositionProgress;
   saveProfileStore();
 }
 
