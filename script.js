@@ -2297,6 +2297,18 @@ function bindEvents() {
   });
 
   els.nounVerbOptions.addEventListener("click", (event) => {
+    const prepositionButton = event.target.closest("button[data-preposition-choice]");
+    if (prepositionButton) {
+      console.log("Preposition answer button clicked", {
+        currentView,
+        selectedAnswer: prepositionButton.dataset.prepositionChoice,
+        currentQuestionId: prepositionQuizState.currentQuestionId
+      });
+      if (prepositionQuizState.hasAnswered) return;
+      answerPrepositionQuiz(prepositionButton.dataset.prepositionChoice);
+      return;
+    }
+
     const button = event.target.closest("button[data-verb]");
     if (currentView === "vocabulary-review") {
       const vocabularyReviewButton = event.target.closest("button[data-vocabulary-choice]");
@@ -2308,12 +2320,6 @@ function bindEvents() {
       const meaningMatchButton = event.target.closest("button[data-meaning-choice]");
       if (!meaningMatchButton || meaningMatchQuizState.hasAnswered) return;
       answerMeaningMatchQuiz(Number(meaningMatchButton.dataset.meaningChoice));
-      return;
-    }
-    if (currentView === "prepositions") {
-      const prepositionButton = event.target.closest("button[data-preposition-choice]");
-      if (!prepositionButton || prepositionQuizState.hasAnswered) return;
-      answerPrepositionQuiz(prepositionButton.dataset.prepositionChoice);
       return;
     }
     if (!button || nounVerbQuizState.hasAnswered) return;
@@ -4314,6 +4320,12 @@ function answerPrepositionQuiz(selectedAnswer) {
   const item = getCurrentPrepositionItem();
   if (!item || prepositionQuizState.hasAnswered) return;
   const isCorrect = selectedAnswer === item.correct;
+  console.log("Preposition answer handled", {
+    currentQuestionId: item.id,
+    selectedAnswer,
+    correctAnswer: item.correct,
+    isCorrect
+  });
   prepositionQuizState.selectedAnswer = selectedAnswer;
   prepositionQuizState.hasAnswered = true;
   updatePrepositionLearningProgress(item, isCorrect);
@@ -4341,7 +4353,7 @@ function renderPrepositionResult(item) {
     button.classList.toggle("correct", answer === item.correct);
     button.classList.toggle("incorrect", answer === prepositionQuizState.selectedAnswer && answer !== item.correct);
   });
-  els.nounVerbNext.classList.add("hidden");
+  els.nounVerbNext.classList.remove("hidden");
 }
 
 function movePrepositionCard(direction) {
