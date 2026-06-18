@@ -4316,28 +4316,54 @@ function renderPrepositionQuiz() {
   if (prepositionQuizState.hasAnswered) renderPrepositionResult(item);
 }
 
+function normalizePrepositionAnswer(value) {
+  return String(value || "").trim().toLowerCase();
+}
+
 function answerPrepositionQuiz(selectedAnswer) {
   const item = getCurrentPrepositionItem();
-  if (!item || prepositionQuizState.hasAnswered) return;
-  const isCorrect = selectedAnswer === item.correct;
+  if (!item) return;
+  if (prepositionQuizState.hasAnswered) {
+    console.log("Preposition answer ignored because question is already answered", {
+      currentQuestionId: item.id,
+      selectedAnswer,
+      correctAnswer: item.correct
+    });
+    return;
+  }
+
+  const normalizedSelected = normalizePrepositionAnswer(selectedAnswer);
+  const normalizedCorrect = normalizePrepositionAnswer(item.correct);
+  const isCorrect = normalizedSelected === normalizedCorrect;
+  prepositionQuizState.selectedAnswer = selectedAnswer;
+  prepositionQuizState.hasAnswered = true;
+
+  const progressEntry = updatePrepositionLearningProgress(item, isCorrect);
+  let coinsAwarded = 0;
+  if (isCorrect) {
+    awardCoins(2);
+    coinsAwarded = 2;
+  }
+
   console.log("Preposition answer handled", {
     currentQuestionId: item.id,
     selectedAnswer,
     correctAnswer: item.correct,
-    isCorrect
+    isCorrect,
+    coinsAwarded,
+    progressUpdated: true,
+    progress: progressEntry
   });
-  prepositionQuizState.selectedAnswer = selectedAnswer;
-  prepositionQuizState.hasAnswered = true;
-  updatePrepositionLearningProgress(item, isCorrect);
-  if (isCorrect) awardCoins(2);
+
   recordStudyHistory("prepositions", item, isCorrect ? "correct" : "wrong");
   savePrepositionProgress();
   renderPrepositionQuiz();
   renderCoinChallenges();
+  if (currentView === "dashboard") renderDashboard();
 }
 
 function renderPrepositionResult(item) {
-  const isCorrect = prepositionQuizState.selectedAnswer === item.correct;
+  const isCorrect = normalizePrepositionAnswer(prepositionQuizState.selectedAnswer) === normalizePrepositionAnswer(item.correct);
   const fullSentence = item.sentence.replace("_____", item.correct);
   els.nounVerbResult.classList.remove("hidden", "success", "error");
   els.nounVerbResult.classList.add(isCorrect ? "success" : "error");
@@ -4658,6 +4684,8 @@ function updatePrepositionLearningProgress(item, isCorrect) {
     status,
     updatedAt: now
   };
+
+  return prepositionProgress[item.id];
 }
 
 function getPrepositionProgressEntry(item) {
