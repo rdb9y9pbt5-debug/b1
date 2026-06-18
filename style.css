@@ -600,15 +600,15 @@ h1 {
 }
 
 .stacked-progress .progress-new {
-  background: rgba(148, 163, 184, 0.58);
+  background: #EDF2F7;
 }
 
 .stacked-progress .progress-learned {
-  background: var(--amber);
+  background: #83C5BE;
 }
 
 .stacked-progress .progress-mastered {
-  background: var(--green);
+  background: #006D77;
 }
 
 .coin-challenge-card button {
