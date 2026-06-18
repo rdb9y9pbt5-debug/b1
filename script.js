@@ -1530,7 +1530,7 @@ function renderDashboard() {
   checkAchievements("dashboard");
   const wordSummary = getWordLearningSummary();
   const articleSummary = getArticleSummary();
-  const nounVerbSummary = getNounVerbSummary();
+  const meaningMatchSummary = getMeaningMatchSummary();
   const prepositionSummary = getPrepositionSummary();
   const level = getCoinLevel(profile.coins);
   const levelPercent = getLevelProgressPercent(profile.coins, level);
@@ -1545,9 +1545,9 @@ function renderDashboard() {
   els.dashboardArticleNew.textContent = articleSummary.new;
   els.dashboardArticleLearned.textContent = articleSummary.learned;
   els.dashboardArticleMastered.textContent = articleSummary.mastered;
-  els.dashboardNounVerbNew.textContent = nounVerbSummary.new;
-  els.dashboardNounVerbLearned.textContent = nounVerbSummary.learned;
-  els.dashboardNounVerbMastered.textContent = nounVerbSummary.mastered;
+  els.dashboardNounVerbNew.textContent = meaningMatchSummary.new;
+  els.dashboardNounVerbLearned.textContent = meaningMatchSummary.learned;
+  els.dashboardNounVerbMastered.textContent = meaningMatchSummary.mastered;
   els.dashboardPrepositionNew.textContent = prepositionSummary.new;
   els.dashboardPrepositionLearned.textContent = prepositionSummary.learned;
   els.dashboardPrepositionMastered.textContent = prepositionSummary.mastered;
